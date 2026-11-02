@@ -19,7 +19,7 @@
 
 <br/>
 
-<p align="center"><strong>SaaS Starter + Platform Modules</strong>: subscriptions, live chat support, Calendly booking, a contact inbox, CMS pages and a role-based admin portal. Each one is a module you can switch off, and all of them are built security-first and stay fast.</p>
+<p align="center"><strong>Base Suite</strong>: subscriptions, live chat support, Calendly booking, a contact inbox, CMS pages and a role-based admin portal. Each one is a module you can switch off, and all of them are built security-first and stay fast.</p>
 
 > This is a fork of [CMSaasStarter](https://github.com/CriticalMoments/CMSaasStarter) (MIT). Everything below the "Platform modules" section is the upstream documentation, which still applies.
 
