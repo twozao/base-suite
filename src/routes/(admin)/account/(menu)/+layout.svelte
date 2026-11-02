@@ -8,6 +8,9 @@
   }
 
   let { children }: Props = $props()
+  import { page } from "$app/stores"
+  import { isModuleEnabled } from "$lib/modules"
+  import ChatLauncher from "$lib/components/chat/ChatLauncher.svelte"
 
   const adminSectionStore = writable("")
   setContext("adminSection", adminSectionStore)
@@ -140,9 +143,34 @@
         </a>
       </li>
 
+      {#if $page.data.isStaff}
+        <li>
+          <a href="/admin" class="font-semibold">
+            <svg
+              class="h-5 w-5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              aria-hidden="true"
+              ><path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M9 12l2 2 4-4m5.6-4.6A11.9 11.9 0 0112 2.9 11.9 11.9 0 013.4 6 12 12 0 003 9c0 5.6 3.8 10.3 9 11.6 5.2-1.3 9-6 9-11.6 0-1-.1-2.1-.4-3z"
+              /></svg
+            >
+            Admin portal
+          </a>
+        </li>
+      {/if}
+
       <li class="mt-auto">
         <a href="/account/sign_out" class="mt-auto text-base">Sign Out</a>
       </li>
     </ul>
   </div>
 </div>
+
+{#if isModuleEnabled("chat")}
+  <ChatLauncher />
+{/if}

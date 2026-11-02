@@ -1,6 +1,7 @@
 // src/routes/auth/callback/+server.js
 import { redirect } from "@sveltejs/kit"
 import { isAuthApiError } from "@supabase/supabase-js"
+import { safeNextPath } from "$lib/safe_redirect"
 
 export const GET = async ({ url, locals: { supabase } }) => {
   const code = url.searchParams.get("code")
@@ -18,10 +19,6 @@ export const GET = async ({ url, locals: { supabase } }) => {
     }
   }
 
-  const next = url.searchParams.get("next")
-  if (next) {
-    redirect(303, next)
-  }
-
-  redirect(303, "/account")
+  // Only ever redirect to a same-site path (prevents open redirects)
+  redirect(303, safeNextPath(url.searchParams.get("next")))
 }

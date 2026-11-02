@@ -3,6 +3,7 @@
   import type { SubmitFunction } from "@sveltejs/kit"
   import type { FullAutoFill } from "svelte/elements"
 
+  let { data } = $props()
   let errors: { [fieldName: string]: string } = $state({})
   let loading = $state(false)
   let showSuccess = $state(false)
@@ -103,7 +104,7 @@
           class="card card-bordered shadow-lg py-6 px-6 mx-2 lg:mx-0 lg:p-6 mb-10"
         >
           <div class="text-2xl font-bold mb-4">Thank you!</div>
-          <p class="">We've received your message and will be in touch soon.</p>
+          <p class="">{data.successMessage}</p>
         </div>
       </div>
     {:else}
@@ -114,6 +115,18 @@
           action="?/submitContactUs"
           use:enhance={handleSubmit}
         >
+          <!-- Honeypot: hidden from people, filled in by naive bots -->
+          <div class="hidden" aria-hidden="true">
+            <label>
+              Leave this empty
+              <input
+                type="text"
+                name="website_url"
+                tabindex="-1"
+                autocomplete="off"
+              />
+            </label>
+          </div>
           {#each formFields as field}
             <label for={field.id}>
               <div class="flex flex-row">

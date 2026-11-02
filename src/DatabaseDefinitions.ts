@@ -6,6 +6,132 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
+// Helper for the platform-module tables below: `Req` lists the columns that
+// must be supplied on insert; every other column has a database default.
+type Table<Row, Req extends keyof Row> = {
+  Row: Row
+  Insert: Pick<Row, Req> & Partial<Omit<Row, Req>>
+  Update: Partial<Row>
+  Relationships: []
+}
+
+export type AppRole = "admin" | "editor" | "support"
+export type ContactStatus = "new" | "open" | "closed" | "spam"
+export type CmsStatus = "draft" | "published" | "archived"
+export type ChatStatus = "open" | "pending" | "closed"
+export type ChatSender = "visitor" | "staff" | "system"
+export type BookingStatus = "scheduled" | "canceled"
+
+export type UserRoleRow = {
+  user_id: string
+  role: AppRole
+  granted_by: string | null
+  created_at: string
+}
+export type AuditLogRow = {
+  id: number
+  actor_id: string | null
+  action: string
+  target_type: string | null
+  target_id: string | null
+  meta: Json
+  ip: string | null
+  created_at: string
+}
+export type SiteSettingRow = {
+  key: string
+  value: Json
+  updated_by: string | null
+  updated_at: string
+}
+export type CmsPageRow = {
+  id: string
+  slug: string
+  title: string
+  body_md: string
+  body_html: string
+  excerpt: string | null
+  seo_title: string | null
+  seo_description: string | null
+  status: CmsStatus
+  published_at: string | null
+  created_by: string | null
+  updated_by: string | null
+  created_at: string
+  updated_at: string
+}
+export type CmsRevisionRow = {
+  id: number
+  page_id: string
+  title: string
+  body_md: string
+  saved_by: string | null
+  created_at: string
+}
+export type ChatConversationRow = {
+  id: string
+  user_id: string | null
+  visitor_token_hash: string | null
+  visitor_name: string | null
+  visitor_email: string | null
+  page_url: string | null
+  status: ChatStatus
+  assigned_to: string | null
+  unread_by_staff: number
+  unread_by_visitor: number
+  last_message_at: string
+  created_at: string
+}
+export type ChatMessageRow = {
+  id: number
+  conversation_id: string
+  sender: ChatSender
+  author_id: string | null
+  body: string
+  created_at: string
+}
+export type BookingRow = {
+  id: string
+  provider: "calendly"
+  external_id: string
+  event_uri: string | null
+  event_name: string | null
+  invitee_name: string | null
+  invitee_email: string | null
+  user_id: string | null
+  start_time: string | null
+  end_time: string | null
+  status: BookingStatus
+  cancel_reason: string | null
+  cancel_url: string | null
+  reschedule_url: string | null
+  created_at: string
+  updated_at: string
+}
+export type SubscriptionRow = {
+  id: string
+  user_id: string | null
+  stripe_customer_id: string
+  status: string
+  price_id: string | null
+  product_id: string | null
+  current_period_end: string | null
+  cancel_at_period_end: boolean
+  created_at: string
+  updated_at: string
+}
+export type AdminUserRow = {
+  id: string
+  email: string
+  created_at: string
+  last_sign_in_at: string | null
+  full_name: string | null
+  company_name: string | null
+  roles: AppRole[]
+  subscription_status: string | null
+  total_count: number
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -19,6 +145,10 @@ export interface Database {
           message_body: string | null
           phone: string | null
           updated_at: Date | null
+          created_at: string
+          status: ContactStatus
+          admin_notes: string | null
+          handled_by: string | null
         }
         Insert: {
           company_name?: string | null
@@ -29,6 +159,7 @@ export interface Database {
           message_body?: string | null
           phone?: string | null
           updated_at?: Date | null
+          status?: ContactStatus
         }
         Update: {
           company_name?: string | null
@@ -39,6 +170,9 @@ export interface Database {
           message_body?: string | null
           phone?: string | null
           updated_at?: Date | null
+          status?: ContactStatus
+          admin_notes?: string | null
+          handled_by?: string | null
         }
         Relationships: []
       }
@@ -104,15 +238,47 @@ export interface Database {
           },
         ]
       }
+      user_roles: Table<UserRoleRow, "user_id" | "role">
+      audit_log: Table<AuditLogRow, "action">
+      site_settings: Table<SiteSettingRow, "key" | "value">
+      rate_limits: Table<
+        { key: string; window_start: string; hits: number },
+        "key" | "window_start" | "hits"
+      >
+      cms_pages: Table<CmsPageRow, "slug" | "title">
+      cms_page_revisions: Table<CmsRevisionRow, "page_id" | "title" | "body_md">
+      chat_conversations: Table<ChatConversationRow, never>
+      chat_messages: Table<
+        ChatMessageRow,
+        "conversation_id" | "sender" | "body"
+      >
+      bookings: Table<BookingRow, "external_id">
+      subscriptions: Table<
+        SubscriptionRow,
+        "id" | "stripe_customer_id" | "status"
+      >
+      stripe_events: Table<
+        { id: string; type: string; received_at: string },
+        "id" | "type"
+      >
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: { Args: { r: AppRole }; Returns: boolean }
+      rate_limit_hit: {
+        Args: { p_key: string; p_window_seconds: number; p_max: number }
+        Returns: boolean
+      }
+      rate_limit_prune: { Args: Record<string, never>; Returns: undefined }
+      admin_list_users: {
+        Args: { p_search?: string | null; p_limit?: number; p_offset?: number }
+        Returns: AdminUserRow[]
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: AppRole
     }
     CompositeTypes: {
       [_ in never]: never

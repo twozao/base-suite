@@ -63,6 +63,7 @@ export const load = async ({ fetch, data, depends, url }) => {
     profile,
     user,
     amr: aal?.currentAuthenticationMethods,
+    isStaff: data.isStaff,
   }
 }
 

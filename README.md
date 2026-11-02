@@ -19,6 +19,42 @@
 
 <br/>
 
+<p align="center"><strong>SaaS Starter + Platform Modules</strong>: subscriptions, live chat support, Calendly booking, a contact inbox, CMS pages and a role-based admin portal. Each one is a module you can switch off, and all of them are built security-first and stay fast.</p>
+
+> This is a fork of [CMSaasStarter](https://github.com/CriticalMoments/CMSaasStarter) (MIT). Everything below the "Platform modules" section is the upstream documentation, which still applies.
+
+## Platform modules
+
+| Module                    | What you get                                                                                                                |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| **Admin portal** `/admin` | Dashboard, user directory, role management (admin, editor, support), audit log and runtime settings                         |
+| **Subscriptions**         | Stripe Checkout and billing portal (from upstream), plus a webhook-synced subscription table and an admin view              |
+| **Live chat**             | A ~1 KB lazy-loaded widget on every page and a support inbox with assignment, unread counts and email alerts                |
+| **Booking**               | `/book` page embedding your Calendly event types, with signed Calendly webhooks feeding Admin → Bookings                    |
+| **Contact form**          | Validation, honeypot and rate limit, plus an admin inbox with status and internal notes                                     |
+| **CMS pages**             | Markdown editor with server-side preview, publish/draft, revisions, SEO fields and sitemap integration, served at `/<slug>` |
+
+**Security:**
+
+- Row Level Security on every table, plus a server-side permission check on every admin load and action
+- Roles kept in a table users can't write to
+- Strict CSP with no third-party scripts
+- CMS HTML sanitised at save time
+- HMAC-verified webhooks
+- Postgres-backed rate limits
+- An audit log of admin changes
+- An open-redirect fix for the upstream auth callback
+
+**Performance:**
+
+- Marketing pages stay prerendered
+- The chat panel and Calendly load only when someone uses them
+- CMS pages serve stored HTML and are CDN-cacheable
+
+👉 **Setup, the security model and how to add modules: [docs/MODULES.md](docs/MODULES.md)**
+
+---
+
 # SaaS Starter: A SvelteKit Boilerplate/Template
 
 - [Feature Rich](#features): user auth, user dashboard, marketing site, blog engine, billing/subscriptions, pricing page, search, emails, and more.

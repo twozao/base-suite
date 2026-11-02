@@ -6,7 +6,8 @@ import {
 } from "$env/static/public"
 import { createServerClient } from "@supabase/ssr"
 import { createClient, type AMREntry } from "@supabase/supabase-js"
-import type { Handle } from "@sveltejs/kit"
+import { error, redirect, type Handle } from "@sveltejs/kit"
+import { getStaff } from "$lib/server/auth/staff"
 import { sequence } from "@sveltejs/kit/hooks"
 
 export const supabase: Handle = async ({ event, resolve }) => {
@@ -104,4 +105,58 @@ const authGuard: Handle = async ({ event, resolve }) => {
   return resolve(event)
 }
 
-export const handle: Handle = sequence(supabase, authGuard)
+// Security headers for every server-rendered response. The Content Security
+// Policy itself is configured in svelte.config.js so SvelteKit can add hashes /
+// nonces for its own inline scripts (it also covers prerendered pages).
+const securityHeaders: Handle = async ({ event, resolve }) => {
+  const response = await resolve(event)
+  const h = response.headers
+  // Webhook / API responses can't be framed anyway; for HTML pages this blocks
+  // clickjacking. (frame-ancestors can't be set from a <meta> CSP.)
+  if (!h.has("x-frame-options")) h.set("x-frame-options", "DENY")
+  h.set("x-content-type-options", "nosniff")
+  h.set("referrer-policy", "strict-origin-when-cross-origin")
+  h.set(
+    "permissions-policy",
+    "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+  )
+  h.set("cross-origin-opener-policy", "same-origin")
+  if (event.url.protocol === "https:") {
+    h.set("strict-transport-security", "max-age=63072000; includeSubDomains")
+  }
+  // Never let shared caches store anything personalised.
+  if (
+    event.url.pathname.startsWith("/admin") ||
+    event.url.pathname.startsWith("/account")
+  ) {
+    h.set("cache-control", "private, no-store")
+  }
+  return response
+}
+
+// Defence in depth for the admin portal: every /admin request needs a
+// signed-in user. Each admin load/action then checks its own permission via
+// requirePermission().
+const adminGuard: Handle = async ({ event, resolve }) => {
+  if (
+    event.url.pathname === "/admin" ||
+    event.url.pathname.startsWith("/admin/")
+  ) {
+    if (!event.locals.user) {
+      redirect(
+        303,
+        `/login/sign_in?next=${encodeURIComponent(event.url.pathname)}`,
+      )
+    }
+    const staff = await getStaff(event)
+    if (!staff) error(404, "Not found")
+  }
+  return resolve(event)
+}
+
+export const handle: Handle = sequence(
+  securityHeaders,
+  supabase,
+  authGuard,
+  adminGuard,
+)

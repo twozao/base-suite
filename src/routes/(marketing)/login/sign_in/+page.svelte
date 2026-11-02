@@ -4,6 +4,7 @@
   import { goto } from "$app/navigation"
   import { onMount } from "svelte"
   import { page } from "$app/stores"
+  import { safeNextPath } from "$lib/safe_redirect"
 
   let { data } = $props()
   let supabase = $derived(data.supabase)
@@ -16,7 +17,7 @@
         // Give the layout callback priority to update state or
         // we'll just bounch back to login when /account tries to load
         setTimeout(() => {
-          goto("/account")
+          goto(safeNextPath($page.url.searchParams.get("next")))
         }, 1)
       }
     })

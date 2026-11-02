@@ -1,5 +1,5 @@
 {
-  "name": "cmsassstarter",
+  "name": "saas-platform-starter",
   "version": "0.0.1",
   "private": true,
   "scripts": {
@@ -24,6 +24,7 @@
     "@types/glob": "^8.1.0",
     "@types/html-to-text": "^9.0.4",
     "@types/jsdom": "^21.1.7",
+    "@types/sanitize-html": "^2.16.2",
     "@typescript-eslint/eslint-plugin": "^8.57.1",
     "@typescript-eslint/parser": "^8.57.1",
     "daisyui": "^5.0.0",
@@ -53,8 +54,11 @@
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.45.2",
     "handlebars": "^4.7.8",
+    "marked": "^18.1.2",
     "resend": "^3.5.0",
-    "stripe": "^13.3.0"
+    "sanitize-html": "^2.18.1",
+    "stripe": "^13.3.0",
+    "zod": "^4.6.7"
   },
   "overrides": {
     "@supabase/auth-ui-svelte": {
@@ -66,5 +70,6 @@
     "@sveltejs/kit": {
       "cookie": "^0.7.0"
     }
-  }
+  },
+  "description": "SvelteKit + Supabase SaaS starter with subscriptions, live chat, Calendly booking, contact inbox, CMS pages and a role-based admin portal"
 }
