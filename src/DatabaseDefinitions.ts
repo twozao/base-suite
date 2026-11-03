@@ -79,6 +79,70 @@ export type PostRow = {
   created_at: string
   updated_at: string
 }
+export type CrmStatus = "lead" | "customer" | "archived"
+export type DealStage = "new" | "qualified" | "proposal" | "won" | "lost"
+export type CrmActivityKind =
+  | "note"
+  | "call"
+  | "email"
+  | "meeting"
+  | "chat"
+  | "contact_form"
+  | "booking"
+  | "signup"
+  | "newsletter"
+  | "deal"
+  | "subscription"
+export type CrmContactRow = {
+  id: string
+  email: string | null
+  name: string | null
+  company: string | null
+  phone: string | null
+  user_id: string | null
+  status: CrmStatus
+  source: string | null
+  owner_id: string | null
+  tags: string[]
+  notes: string | null
+  last_activity_at: string
+  created_at: string
+  updated_at: string
+}
+export type CrmDealRow = {
+  id: string
+  contact_id: string
+  title: string
+  value_cents: number
+  currency: string
+  stage: DealStage
+  owner_id: string | null
+  expected_close: string | null
+  created_at: string
+  updated_at: string
+}
+export type CrmActivityRow = {
+  id: number
+  contact_id: string
+  kind: CrmActivityKind
+  body: string | null
+  ref_type: string | null
+  ref_id: string | null
+  actor_id: string | null
+  created_at: string
+}
+export type NewsletterSubscriberRow = {
+  id: string
+  email: string
+  name: string | null
+  status: "pending" | "confirmed" | "unsubscribed"
+  confirm_token_hash: string | null
+  unsubscribe_token_hash: string
+  source: string | null
+  created_at: string
+  confirmed_at: string | null
+  unsubscribed_at: string | null
+}
 export type CmsRevisionRow = {
   id: number
   page_id: string
@@ -266,6 +330,21 @@ export interface Database {
       >
       cms_pages: Table<CmsPageRow, "slug" | "title">
       posts: Table<PostRow, "slug" | "title">
+      crm_contacts: Table<CrmContactRow, never>
+      crm_deals: Table<CrmDealRow, "contact_id" | "title">
+      crm_activities: Table<CrmActivityRow, "contact_id" | "kind">
+      newsletter_subscribers: Table<
+        NewsletterSubscriberRow,
+        "email" | "unsubscribe_token_hash"
+      >
+      analytics_daily: Table<
+        { day: string; path: string; views: number },
+        "day" | "path"
+      >
+      analytics_referrers: Table<
+        { day: string; host: string; views: number },
+        "day" | "host"
+      >
       cms_page_revisions: Table<CmsRevisionRow, "page_id" | "title" | "body_md">
       chat_conversations: Table<ChatConversationRow, never>
       chat_messages: Table<
@@ -292,6 +371,10 @@ export interface Database {
         Returns: boolean
       }
       rate_limit_prune: { Args: Record<string, never>; Returns: undefined }
+      analytics_hit: {
+        Args: { p_path: string; p_host: string | null }
+        Returns: undefined
+      }
       admin_list_users: {
         Args: { p_search?: string | null; p_limit?: number; p_offset?: number }
         Returns: AdminUserRow[]

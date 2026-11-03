@@ -7,6 +7,7 @@ import {
 } from "$lib/server/booking/calendly"
 import { requireModule } from "$lib/server/auth/staff"
 import { sendAdminEmail } from "$lib/mailer"
+import { captureLead } from "$lib/server/crm"
 import type { RequestHandler } from "./$types"
 
 // Receives invitee.created / invitee.canceled from Calendly and records them in
@@ -61,6 +62,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     console.error("Booking upsert failed", upsertError.message)
     error(500, "Processing failed")
   }
+
+  await captureLead(db, {
+    email: row.invitee_email,
+    name: row.invitee_name,
+    userId,
+    source: "booking",
+    kind: "booking",
+    body: `${row.status === "canceled" ? "Cancelled" : "Booked"} ${row.event_name ?? "a meeting"} for ${row.start_time ?? "unknown time"}`,
+    ref: { type: "booking", id: row.external_id },
+  })
 
   if (parsed.data.event === "invitee.created") {
     await sendAdminEmail({

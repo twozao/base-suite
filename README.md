@@ -51,7 +51,7 @@
 - The chat panel and Calendly load only when someone uses them
 - CMS pages serve stored HTML and are CDN-cacheable
 
-👉 **Setup, the security model and how to add modules: [docs/MODULES.md](docs/MODULES.md)**
+👉 **Architecture and full module catalogue: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** · **Setup, security model and owner guide: [docs/MODULES.md](docs/MODULES.md)**
 
 ---
 

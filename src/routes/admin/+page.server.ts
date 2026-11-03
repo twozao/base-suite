@@ -75,7 +75,44 @@ export const load: PageServerLoad = async (event) => {
       : null,
   ])
 
+  const weekAgoDay = new Date(Date.now() - 6 * 86400e3)
+    .toISOString()
+    .slice(0, 10)
+  const [views, leads, subscribers] = await Promise.all([
+    can("analytics.view", "analytics")
+      ? db
+          .from("analytics_daily")
+          .select("views")
+          .gte("day", weekAgoDay)
+          .limit(20_000)
+      : null,
+    can("crm.manage", "crm")
+      ? db.from("crm_contacts").select("id", head).eq("status", "lead")
+      : null,
+    can("newsletter.manage", "newsletter")
+      ? db
+          .from("newsletter_subscribers")
+          .select("id", head)
+          .eq("status", "confirmed")
+      : null,
+  ])
+
   const stats = [
+    views && {
+      label: "Page views (7 days)",
+      value: (views.data ?? []).reduce((s, r) => s + r.views, 0),
+      href: "/admin/analytics",
+    },
+    leads && {
+      label: "Open leads",
+      value: leads.count ?? 0,
+      href: "/admin/crm",
+    },
+    subscribers && {
+      label: "Newsletter subscribers",
+      value: subscribers.count ?? 0,
+      href: "/admin/newsletter",
+    },
     users && {
       label: "Users",
       value: users.data?.[0]?.total_count ?? 0,

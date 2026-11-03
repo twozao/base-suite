@@ -65,6 +65,21 @@ export const handleStripeEvent = async (
       .from("subscriptions")
       .upsert(subscriptionRow(sub, customer?.user_id ?? null))
     if (error) throw new Error(`subscriptions upsert failed: ${error.message}`)
+
+    // CRM: an active subscriber is a customer (best effort, never blocks billing)
+    if (
+      customer?.user_id &&
+      (sub.status === "active" || sub.status === "trialing")
+    ) {
+      await db
+        .from("crm_contacts")
+        .update({
+          status: "customer",
+          last_activity_at: new Date().toISOString(),
+        })
+        .eq("user_id", customer.user_id)
+        .neq("status", "customer")
+    }
   } catch (e) {
     // Let Stripe retry: forget that we saw this event.
     await db.from("stripe_events").delete().eq("id", event.id)

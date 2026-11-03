@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { PublicSite } from "$lib/site"
+  import NewsletterSignup from "./NewsletterSignup.svelte"
   let { site }: { site: PublicSite } = $props()
 
   const SOCIAL: Record<string, { label: string; path: string }> = {
@@ -29,6 +30,23 @@
 </script>
 
 <footer class="border-t border-base-300 bg-base-200/50 mt-24">
+  {#if site.modules.newsletter}
+    <div class="border-b border-base-300">
+      <div
+        class="mx-auto max-w-6xl px-4 sm:px-6 py-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4"
+      >
+        <div>
+          <h2 class="font-semibold text-lg">
+            Get updates from {site.brand.siteName}
+          </h2>
+          <p class="text-sm text-base-content/70">
+            News and guides in your inbox. Unsubscribe any time.
+          </p>
+        </div>
+        <NewsletterSignup source="footer" compact />
+      </div>
+    </div>
+  {/if}
   <div
     class="mx-auto max-w-6xl px-4 sm:px-6 py-14 flex flex-col gap-10 md:flex-row md:justify-between"
   >

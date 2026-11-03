@@ -16,5 +16,8 @@ export type PublicSite = {
     contact: boolean
     subscriptions: boolean
     cms: boolean
+    newsletter: boolean
+    analytics: boolean
+    crm: boolean
   }
 }

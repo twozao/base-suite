@@ -29,6 +29,9 @@ export const calendlyUrl = httpsUrl.refine(
 )
 
 export const settingsSchema = {
+  modules: z
+    .object({ switches: z.record(z.string().max(40), z.boolean()) })
+    .default({ switches: {} }),
   brand: brandSchema.default(DEFAULT_BRAND),
   navigation: navigationSchema.default(DEFAULT_NAVIGATION),
   home: homeSchema.default(DEFAULT_HOME),

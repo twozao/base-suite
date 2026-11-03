@@ -1,6 +1,7 @@
 <script lang="ts">
   import { page } from "$app/stores"
   import PostCard from "$lib/components/site/PostCard.svelte"
+  import NewsletterSignup from "$lib/components/site/NewsletterSignup.svelte"
   import { formatDate } from "$lib/format"
   let { data } = $props()
   const post = $derived(data.post)
@@ -96,6 +97,18 @@
     {@html post.body_html}
   </div>
 </article>
+
+{#if data.site.modules.newsletter}
+  <aside class="mx-auto max-w-3xl px-4 sm:px-6 pb-12">
+    <div
+      class="rounded-box bg-primary/5 border border-primary/20 p-8 text-center"
+    >
+      <h2 class="text-xl font-bold">Enjoyed this post?</h2>
+      <p class="mt-1 text-base-content/70">Get the next one in your inbox.</p>
+      <div class="mt-5"><NewsletterSignup source="blog:{post.slug}" /></div>
+    </div>
+  </aside>
+{/if}
 
 {#if data.related.length}
   <section

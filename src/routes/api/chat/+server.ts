@@ -11,6 +11,7 @@ import {
   startConversation,
 } from "$lib/server/chat/service"
 import { sendAdminEmail } from "$lib/mailer"
+import { captureLead } from "$lib/server/crm"
 import type { RequestHandler } from "./$types"
 
 const noStore = { "cache-control": "private, no-store" }
@@ -88,6 +89,15 @@ export const POST: RequestHandler = async (event) => {
       error(429, "Too many conversations. Please try again later.")
     }
     conversation = await startConversation(event, input)
+    await captureLead(db, {
+      email: event.locals.user?.email ?? input.email,
+      name: input.name,
+      userId: event.locals.user?.id,
+      source: "chat",
+      kind: "chat",
+      body: input.message,
+      ref: { type: "chat", id: conversation.id },
+    })
     if (settings.chat.notifyAdminOnNew) {
       await sendAdminEmail({
         subject: "New live chat",

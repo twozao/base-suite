@@ -14,6 +14,9 @@ export const PERMISSIONS = [
   "bookings.view",
   "settings.manage",
   "audit.view",
+  "crm.manage",
+  "newsletter.manage",
+  "analytics.view",
 ] as const
 export type Permission = (typeof PERMISSIONS)[number]
 
@@ -21,20 +24,28 @@ export const ROLES: readonly AppRole[] = ["admin", "editor", "support"]
 
 const ROLE_PERMISSIONS: Record<AppRole, readonly Permission[]> = {
   admin: PERMISSIONS,
-  editor: ["admin.access", "cms.edit", "cms.publish"],
+  editor: [
+    "admin.access",
+    "cms.edit",
+    "cms.publish",
+    "newsletter.manage",
+    "analytics.view",
+  ],
   support: [
     "admin.access",
     "users.view",
     "contact.manage",
     "chat.respond",
     "bookings.view",
+    "crm.manage",
   ],
 }
 
 export const ROLE_DESCRIPTIONS: Record<AppRole, string> = {
   admin: "Full access, including roles, billing and settings",
-  editor: "Create, edit and publish CMS pages",
-  support: "Answer chats and contact requests, view bookings and users",
+  editor: "Manage website content, newsletter and analytics",
+  support:
+    "Answer chats and contact requests, manage CRM, view bookings and users",
 }
 
 export const permissionsFor = (

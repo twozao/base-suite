@@ -20,6 +20,10 @@ export const load: LayoutServerLoad = async ({ locals }) => {
       contact: isModuleEnabled("contact"),
       subscriptions: isModuleEnabled("subscriptions"),
       cms: isModuleEnabled("cms"),
+      newsletter: isModuleEnabled("newsletter"),
+      // Visitors who send Do Not Track / Global Privacy Control aren't counted
+      analytics: isModuleEnabled("analytics"),
+      crm: isModuleEnabled("crm"),
     },
   }
   return { site, signedIn: !!locals.user }

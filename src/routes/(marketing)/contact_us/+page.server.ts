@@ -3,6 +3,7 @@ import { z } from "zod"
 import { sendAdminEmail } from "$lib/mailer.js"
 import { requireModule } from "$lib/server/auth/staff"
 import { getSettings } from "$lib/server/settings"
+import { captureLead } from "$lib/server/crm"
 import { clientIp } from "$lib/server/security/request"
 import { rateLimit, RATE_LIMITS } from "$lib/server/security/rate_limit"
 import type { Actions, PageServerLoad } from "./$types"
@@ -91,6 +92,17 @@ export const actions: Actions = {
       console.error("Error saving contact request", insertError.message)
       error(500, "Error saving your message")
     }
+
+    await captureLead(supabaseServiceRole, {
+      email: d.email,
+      name: `${d.first_name} ${d.last_name}`,
+      company: d.company,
+      phone: d.phone,
+      userId: event.locals.user?.id,
+      source: "contact_form",
+      kind: "contact_form",
+      body: d.message,
+    })
 
     const settings = await getSettings(supabaseServiceRole)
     if (settings.contact.notifyAdmin) {

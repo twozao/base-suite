@@ -8,6 +8,8 @@ import { createServerClient } from "@supabase/ssr"
 import { createClient, type AMREntry } from "@supabase/supabase-js"
 import { error, redirect, type Handle } from "@sveltejs/kit"
 import { getStaff } from "$lib/server/auth/staff"
+import { getSettings } from "$lib/server/settings"
+import { setModuleSwitches } from "$lib/modules"
 import { sequence } from "@sveltejs/kit/hooks"
 
 export const supabase: Handle = async ({ event, resolve }) => {
@@ -97,6 +99,14 @@ export const supabase: Handle = async ({ event, resolve }) => {
 
 // Not called for prerendered marketing pages so generally okay to call on ever server request
 // Next-page CSR will mean relatively minimal calls to this hook
+// Load the owner's module switches (Admin -> Modules) before any route runs.
+// getSettings is cached per instance, so this is usually free.
+const modules: Handle = async ({ event, resolve }) => {
+  const s = await getSettings(event.locals.supabaseServiceRole)
+  setModuleSwitches(s.modules.switches)
+  return resolve(event)
+}
+
 const authGuard: Handle = async ({ event, resolve }) => {
   const { session, user } = await event.locals.safeGetSession()
   event.locals.session = session
@@ -174,6 +184,7 @@ const adminGuard: Handle = async ({ event, resolve }) => {
 export const handle: Handle = sequence(
   securityHeaders,
   supabase,
+  modules,
   authGuard,
   adminGuard,
 )

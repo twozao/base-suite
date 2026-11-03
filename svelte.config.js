@@ -4,7 +4,11 @@ import { loadEnv } from "vite"
 
 // Content Security Policy. SvelteKit adds hashes/nonces for its own inline scripts, so no 'unsafe-inline' for scripts.
 // .env is not in process.env when this file loads, so read it the way Vite does (shell vars still win).
-const env = loadEnv(process.env.NODE_ENV || "development", process.cwd(), "PUBLIC_")
+const env = loadEnv(
+  process.env.NODE_ENV || "development",
+  process.cwd(),
+  "PUBLIC_",
+)
 const supabaseUrl = env.PUBLIC_SUPABASE_URL || ""
 const supabaseOrigins = supabaseUrl.startsWith("http")
   ? [
