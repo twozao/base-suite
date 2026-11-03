@@ -12,8 +12,7 @@
     "test_run": "vitest run",
     "lint": "eslint .",
     "format": "prettier --write --plugin prettier-plugin-svelte ./",
-    "format_check": "prettier --check --plugin prettier-plugin-svelte ./",
-    "postinstall": "patch-package"
+    "format_check": "prettier --check --plugin prettier-plugin-svelte ./"
   },
   "devDependencies": {
     "@sveltejs/adapter-auto": "^6.0.0",
@@ -21,7 +20,6 @@
     "@sveltejs/vite-plugin-svelte": "^5.0.3",
     "@tailwindcss/postcss": "^4.0.9",
     "@tailwindcss/typography": "^0.5.13",
-    "@types/jsdom": "^21.1.7",
     "@types/sanitize-html": "^2.16.2",
     "@typescript-eslint/eslint-plugin": "^8.57.1",
     "@typescript-eslint/parser": "^8.57.1",
@@ -29,9 +27,6 @@
     "eslint": "^8.28.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-svelte": "^2.45.1",
-    "fuse.js": "^7.0.0",
-    "jsdom": "^24.1.1",
-    "patch-package": "^8.0.1",
     "postcss": "^8.4.31",
     "prettier": "^3.1.0",
     "prettier-plugin-svelte": "^3.2.6",

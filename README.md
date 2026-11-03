@@ -81,7 +81,7 @@ Stripe
 
 Email and booking: email goes through Resend, see [email_docs.md](email_docs.md); the welcome email starts sending as soon as the key is set, so review it first. Calendly links go in Admin -> Settings -> Booking; recording bookings needs a Calendly webhook subscription, steps in [docs/MODULES.md](docs/MODULES.md).
 
-Deploy: on Cloudflare Pages pick the SvelteKit preset and add the environment variables above. The project uses `adapter-auto`, so other SvelteKit hosts work as well; with `adapter-node` set `BODY_SIZE_LIMIT=6M` so media uploads go through. Public pages are rendered on the server and cached for a minute behind a CDN, so admin edits show up within about a minute. Third-party analytics (PostHog, Google Analytics) are optional, see [analytics_docs.md](analytics_docs.md).
+Deploy: on Cloudflare Pages pick the SvelteKit preset and add the environment variables above. The project uses `adapter-auto`, so other SvelteKit hosts work as well; with `adapter-node` set `BODY_SIZE_LIMIT=6M` so media uploads go through. Public pages are rendered on the server and cached for a minute behind a CDN, so admin edits show up within about a minute.
 
 ## Checks
 
