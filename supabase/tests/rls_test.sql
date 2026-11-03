@@ -105,4 +105,13 @@ do $$ begin
   assert (select count(*) from public.crm_contacts) = 1, 'admin reads CRM';
 end $$;
 reset role;
+
+-- Structural rules the migrations promise, checked rather than trusted.
+do $$ declare bad text; begin
+  select string_agg(p.proname, ', ') into bad
+  from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname = 'public' and p.prosecdef
+    and coalesce(array_to_string(p.proconfig, ','), '') not like '%search_path=%';
+  assert bad is null, 'security definer functions without a pinned search_path: ' || bad;
+end $$;
 \echo 'RLS tests passed'
