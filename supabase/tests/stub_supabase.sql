@@ -32,3 +32,5 @@ grant usage on schema public, auth, storage to anon, authenticated, service_role
 alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
 alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
 alter default privileges in schema public grant execute on functions to anon, authenticated, service_role;
+-- Supabase also grants the API roles access to storage.objects; RLS policies are the gate there too.
+grant all on all tables in schema storage to anon, authenticated, service_role;
