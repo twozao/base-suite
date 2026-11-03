@@ -1,9 +1,7 @@
-import { PRIVATE_STRIPE_API_KEY } from "$env/static/private"
 import { error, redirect } from "@sveltejs/kit"
-import Stripe from "stripe"
+import { stripeClient } from "$lib/server/billing/stripe"
 import { getOrCreateCustomerId } from "../../../subscription_helpers.server"
 import type { PageServerLoad } from "./$types"
-const stripe = new Stripe(PRIVATE_STRIPE_API_KEY, { apiVersion: "2023-08-16" })
 
 export const load: PageServerLoad = async ({
   url,
@@ -25,6 +23,14 @@ export const load: PageServerLoad = async ({
     })
   }
 
+  const stripe = stripeClient()
+  if (!stripe) {
+    console.error("Billing portal requested without PRIVATE_STRIPE_API_KEY")
+    error(
+      500,
+      "Billing is not configured. If issue persists, please contact us.",
+    )
+  }
   let portalLink
   try {
     const portalSession = await stripe.billingPortal.sessions.create({

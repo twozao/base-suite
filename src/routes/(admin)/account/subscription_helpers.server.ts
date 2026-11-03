@@ -1,10 +1,9 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js"
 import type { Database } from "../../../DatabaseDefinitions"
-
-import { PRIVATE_STRIPE_API_KEY } from "$env/static/private"
-import Stripe from "stripe"
 import type { Plan } from "$lib/server/content_schema"
-const stripe = new Stripe(PRIVATE_STRIPE_API_KEY, { apiVersion: "2023-08-16" })
+import { stripeClient } from "$lib/server/billing/stripe"
+
+const NOT_CONFIGURED = "Stripe is not configured (PRIVATE_STRIPE_API_KEY)"
 
 export const getOrCreateCustomerId = async ({
   supabaseServiceRole,
@@ -38,7 +37,8 @@ export const getOrCreateCustomerId = async ({
     return { error: profileError }
   }
 
-  // Create a stripe customer
+  const stripe = stripeClient()
+  if (!stripe) return { error: NOT_CONFIGURED }
   let customer
   try {
     customer = await stripe.customers.create({
@@ -81,7 +81,8 @@ export const fetchSubscription = async ({
   customerId: string
   plans: Plan[]
 }) => {
-  // Fetch user's subscriptions
+  const stripe = stripeClient()
+  if (!stripe) return { error: NOT_CONFIGURED }
   let stripeSubscriptions
   try {
     stripeSubscriptions = await stripe.subscriptions.list({

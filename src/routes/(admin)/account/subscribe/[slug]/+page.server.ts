@@ -1,13 +1,11 @@
-import { PRIVATE_STRIPE_API_KEY } from "$env/static/private"
 import { error, redirect } from "@sveltejs/kit"
-import Stripe from "stripe"
+import { stripeClient } from "$lib/server/billing/stripe"
 import {
   fetchSubscription,
   getOrCreateCustomerId,
 } from "../../subscription_helpers.server"
 import type { PageServerLoad } from "./$types"
 import { getSettings } from "$lib/server/settings"
-const stripe = new Stripe(PRIVATE_STRIPE_API_KEY, { apiVersion: "2023-08-16" })
 
 export const load: PageServerLoad = async ({
   params,
@@ -49,6 +47,14 @@ export const load: PageServerLoad = async ({
     redirect(303, "/account/billing")
   }
 
+  const stripe = stripeClient()
+  if (!stripe) {
+    console.error("Checkout requested without PRIVATE_STRIPE_API_KEY")
+    error(
+      500,
+      "Billing is not configured. If issue persists, please contact us.",
+    )
+  }
   let checkoutUrl
   try {
     const stripeSession = await stripe.checkout.sessions.create({

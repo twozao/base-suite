@@ -2,6 +2,7 @@ import { error, json } from "@sveltejs/kit"
 import Stripe from "stripe"
 import { env } from "$env/dynamic/private"
 import { handleStripeEvent } from "$lib/server/billing/stripe_sync"
+import { stripeClient } from "$lib/server/billing/stripe"
 import { requireModule } from "$lib/server/auth/staff"
 import type { RequestHandler } from "./$types"
 
@@ -12,17 +13,14 @@ import type { RequestHandler } from "./$types"
 export const POST: RequestHandler = async ({ request, locals }) => {
   requireModule("subscriptions")
   const secret = env.PRIVATE_STRIPE_WEBHOOK_SECRET
-  if (!secret || !env.PRIVATE_STRIPE_API_KEY) error(404, "Not found")
+  const stripe = stripeClient()
+  if (!secret || !stripe) error(404, "Not found")
 
   const signature = request.headers.get("stripe-signature")
   if (!signature) error(400, "Missing signature")
   const body = await request.text()
   if (body.length > 1_000_000) error(413, "Payload too large")
 
-  const stripe = new Stripe(env.PRIVATE_STRIPE_API_KEY, {
-    apiVersion: "2023-08-16",
-    httpClient: Stripe.createFetchHttpClient(),
-  })
   let event: Stripe.Event
   try {
     event = await stripe.webhooks.constructEventAsync(
