@@ -1,6 +1,6 @@
 # Adding Analytics
 
-Adding analytics to your SaaS Starter project is optional.
+Adding analytics to your Base Suite project is optional.
 
 Since each analytics platform has different setup instructions, we've created a guide instead of adding it in code.
 

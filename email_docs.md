@@ -1,6 +1,6 @@
 # Email Setup
 
-SaaS Starter includes email capabilities for sending emails to users, and admins.
+Base Suite includes email capabilities for sending emails to users, and admins.
 
 There are three types of emails:
 
@@ -20,7 +20,7 @@ To enable email capabilities, set the following environment variables:
 
 ## Customize Welcome Email
 
-SaaS Starter includes a welcome email template that you can customize to fit your brand and content. The email is sent to the user's email address when create their profile.
+Base Suite includes a welcome email template that you can customize to fit your brand and content. The email is sent to the user's email address when create their profile.
 
 To customize the email:
 

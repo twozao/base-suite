@@ -1,7 +1,8 @@
 export const WebsiteName: string = "Base Suite"
-export const WebsiteBaseUrl: string = "https://saasstarter.work"
+// Your public origin, no trailing slash. Used for the sitemap, SEO tags and links in emails.
+export const WebsiteBaseUrl: string = "https://example.com"
 export const WebsiteDescription: string =
-  "Open source, fast, and free to host SaaS template. Built with SvelteKit, Supabase, Stripe, Tailwind, DaisyUI, and Postgres"
+  "Subscriptions, live chat, Calendly booking, a contact inbox, CMS pages and a role-based admin portal on SvelteKit and Supabase"
 export const CreateProfileStep: boolean = true
 
 // -----------------------------------------------------------------------------

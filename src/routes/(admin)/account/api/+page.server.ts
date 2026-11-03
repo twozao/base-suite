@@ -1,6 +1,7 @@
 import { fail, redirect } from "@sveltejs/kit"
 import { sendAdminEmail, sendUserEmail } from "$lib/mailer"
-import { WebsiteBaseUrl } from "../../../../config"
+import { env } from "$env/dynamic/private"
+import { WebsiteBaseUrl, WebsiteName } from "../../../../config"
 
 export const actions = {
   toggleEmailSubscription: async ({ locals: { supabase, safeGetSession } }) => {
@@ -313,10 +314,13 @@ export const actions = {
       await sendUserEmail({
         user: session.user,
         subject: "Welcome!",
-        from_email: "no-reply@saasstarter.work",
+        from_email:
+          env.PRIVATE_FROM_ADMIN_EMAIL ||
+          env.PRIVATE_ADMIN_EMAIL ||
+          "no-reply@example.com",
         template_name: "welcome_email",
         template_properties: {
-          companyName: "SaaS Starter",
+          companyName: WebsiteName,
           WebsiteBaseUrl: WebsiteBaseUrl,
         },
       })
