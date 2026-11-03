@@ -30,13 +30,11 @@ describe("mailer", () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(createClient as any).mockReturnValue(mockSupabaseClient)
 
+    // vitest 4 calls class mocks with new, so the implementation must be constructable
     vi.mocked(Resend).mockImplementation(
-      () =>
-        ({
-          emails: {
-            send: mockSend,
-          },
-        }) as unknown as Resend,
+      class {
+        emails = { send: mockSend }
+      } as unknown as typeof Resend,
     )
   })
 

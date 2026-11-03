@@ -21,8 +21,6 @@
     "@sveltejs/vite-plugin-svelte": "^5.0.3",
     "@tailwindcss/postcss": "^4.0.9",
     "@tailwindcss/typography": "^0.5.13",
-    "@types/glob": "^8.1.0",
-    "@types/html-to-text": "^9.0.4",
     "@types/jsdom": "^21.1.7",
     "@types/sanitize-html": "^2.16.2",
     "@typescript-eslint/eslint-plugin": "^8.57.1",
@@ -32,8 +30,6 @@
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-svelte": "^2.45.1",
     "fuse.js": "^7.0.0",
-    "glob": "^10.4.5",
-    "html-to-text": "^9.0.5",
     "jsdom": "^24.1.1",
     "patch-package": "^8.0.1",
     "postcss": "^8.4.31",
@@ -45,7 +41,7 @@
     "tailwindcss": "^4.0.9",
     "typescript": "^5.5.0",
     "vite": "^6.3.5",
-    "vitest": "^3.0.7"
+    "vitest": "^4.1.12"
   },
   "type": "module",
   "dependencies": {
@@ -55,7 +51,7 @@
     "@supabase/supabase-js": "^2.45.2",
     "handlebars": "^4.7.8",
     "marked": "^18.1.2",
-    "resend": "^3.5.0",
+    "resend": "^6.37.0",
     "sanitize-html": "^2.18.1",
     "stripe": "^13.3.0",
     "zod": "^4.6.7"
@@ -69,6 +65,9 @@
     },
     "@sveltejs/kit": {
       "cookie": "^0.7.0"
+    },
+    "@tailwindcss/typography": {
+      "postcss-selector-parser": "^6.1.5"
     }
   },
   "description": "SvelteKit + Supabase SaaS starter with subscriptions, live chat, Calendly booking, contact inbox, CMS pages and a role-based admin portal"
