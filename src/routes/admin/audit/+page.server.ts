@@ -1,12 +1,14 @@
 import { error } from "@sveltejs/kit"
 import { requirePermission } from "$lib/server/auth/staff"
+import { isAuditAction } from "$lib/server/audit"
 import { pageParams } from "$lib/server/pagination"
 import type { PageServerLoad } from "./$types"
 
 export const load: PageServerLoad = async (event) => {
   await requirePermission(event, "audit.view")
   const { page, size, from, to } = pageParams(event.url, 50)
-  const action = (event.url.searchParams.get("action") ?? "").slice(0, 100)
+  const requested = event.url.searchParams.get("action")
+  const action = isAuditAction(requested) ? requested : ""
   const db = event.locals.supabaseServiceRole
   let query = db
     .from("audit_log")
