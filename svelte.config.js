@@ -1,10 +1,11 @@
 import adapter from "@sveltejs/adapter-auto"
 import { vitePreprocess } from "@sveltejs/vite-plugin-svelte"
+import { loadEnv } from "vite"
 
-// Content Security Policy. SvelteKit adds hashes/nonces for its own inline
-// scripts, so no 'unsafe-inline' is needed for scripts. Extend the lists below
-// if you embed other third-party services.
-const supabaseUrl = process.env.PUBLIC_SUPABASE_URL || ""
+// Content Security Policy. SvelteKit adds hashes/nonces for its own inline scripts, so no 'unsafe-inline' for scripts.
+// .env is not in process.env when this file loads, so read it the way Vite does (shell vars still win).
+const env = loadEnv(process.env.NODE_ENV || "development", process.cwd(), "PUBLIC_")
+const supabaseUrl = env.PUBLIC_SUPABASE_URL || ""
 const supabaseOrigins = supabaseUrl.startsWith("http")
   ? [
       new URL(supabaseUrl).origin,
