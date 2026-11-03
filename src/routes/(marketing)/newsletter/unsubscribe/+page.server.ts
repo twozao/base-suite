@@ -2,8 +2,8 @@ import { requireModule } from "$lib/server/auth/staff"
 import { unsubscribe } from "$lib/server/newsletter"
 import type { Actions, PageServerLoad } from "./$types"
 
-// GET only shows a button: link scanners and prefetchers must not unsubscribe
-// anyone. The POST (also used for RFC 8058 one-click) does the work.
+// GET only shows a button: link scanners and prefetchers must not unsubscribe anyone. The POST does the work.
+// RFC 8058 one-click (List-Unsubscribe headers plus a CSRF-exempt POST) is not implemented; nothing sends newsletters yet.
 export const load: PageServerLoad = ({ url, setHeaders }) => {
   requireModule("newsletter")
   setHeaders({ "cache-control": "private, no-store" })
