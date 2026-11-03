@@ -1,19 +1,21 @@
 <script lang="ts">
-  import { WebsiteName } from "../../../config"
   let { data } = $props()
   // svelte-ignore state_referenced_locally
   let selected: number | null = $state(data.eventTypes.length === 1 ? 0 : null)
 </script>
 
 <svelte:head>
-  <title>Book a call | {WebsiteName}</title>
+  <title>Book a call | {data.site.brand.siteName}</title>
   <meta name="description" content={data.intro} />
 </svelte:head>
 
-<div class="max-w-5xl mx-auto px-6 py-12">
-  <h1 class="text-4xl font-bold mb-3">Book a call</h1>
-  <p class="text-lg opacity-80 mb-8">{data.intro}</p>
-
+<section class="bg-brand-glow">
+  <div class="mx-auto max-w-5xl px-4 sm:px-6 pt-16 pb-8 sm:pt-24">
+    <h1 class="text-4xl sm:text-5xl font-bold tracking-tight">Book a call</h1>
+    <p class="mt-4 text-lg text-base-content/70">{data.intro}</p>
+  </div>
+</section>
+<div class="max-w-5xl mx-auto px-4 sm:px-6 pb-12">
   {#if data.eventTypes.length === 0}
     <div class="alert">
       <span>

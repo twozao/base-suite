@@ -1,5 +1,6 @@
 <script lang="ts">
   import { enhance, applyAction } from "$app/forms"
+  import Icon from "$lib/components/site/Icon.svelte"
   import type { SubmitFunction } from "@sveltejs/kit"
   import type { FullAutoFill } from "svelte/elements"
 
@@ -72,45 +73,88 @@
   }
 </script>
 
-<div
-  class="flex flex-col lg:flex-row mx-auto my-4 min-h-[70vh] place-items-center lg:place-items-start place-content-center"
->
-  <div
-    class="max-w-[400px] lg:max-w-[500px] flex flex-col place-content-center p-4 lg:mr-8 lg:mb-8 lg:min-h-[70vh]"
-  >
-    <div class="px-6">
-      <h1 class="text-2xl lg:text-4xl font-bold mb-4">Contact Us</h1>
-      <p class="text-lg">Talk to one of our service professionals to:</p>
-      <ul class="list-disc list-outside pl-6 py-4 space-y-1">
-        <li class="">Get a live demo</li>
-        <li class="">Discuss your specific needs</li>
-        <li>Get a quote</li>
-        <li>Answer any technical questions you have</li>
-      </ul>
-      <p>Once you complete the form, we'll reach out to you! *</p>
-      <p class="text-sm pt-8">
-        *Not really for this demo page, but you should say something like that
-        😉
-      </p>
-    </div>
-  </div>
+<svelte:head>
+  <title>Contact | {data.site.brand.siteName}</title>
+  <meta
+    name="description"
+    content="Get in touch with {data.site.brand.siteName}."
+  />
+</svelte:head>
 
+<section class="bg-brand-glow">
   <div
-    class="flex flex-col grow m-4 lg:ml-10 min-w-[300px] stdphone:min-w-[360px] max-w-[400px] place-content-center lg:min-h-[70vh]"
+    class="mx-auto grid max-w-6xl gap-12 px-4 sm:px-6 py-16 sm:py-24 lg:grid-cols-2"
   >
-    {#if showSuccess}
-      <div class="flex flex-col place-content-center lg:min-h-[70vh]">
+    <div>
+      <h1 class="text-4xl sm:text-5xl font-bold tracking-tight">
+        Get in touch
+      </h1>
+      <p class="mt-4 text-lg text-base-content/70 max-w-md">
+        Questions, a quote or a demo — send us a message and we'll get back to
+        you, usually within one business day.
+      </p>
+      <ul class="mt-10 space-y-6">
+        {#if data.site.modules.chat}
+          <li class="flex gap-4">
+            <span
+              class="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary"
+              ><Icon name="chat" /></span
+            >
+            <span
+              ><span class="block font-semibold">Live chat</span><span
+                class="text-base-content/70"
+                >Use the chat button in the corner for a quick answer.</span
+              ></span
+            >
+          </li>
+        {/if}
+        {#if data.site.modules.booking}
+          <li class="flex gap-4">
+            <span
+              class="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary"
+              ><Icon name="calendar" /></span
+            >
+            <span
+              ><span class="block font-semibold">Book a call</span><span
+                class="text-base-content/70"
+                ><a class="link" href="/book">Pick a time</a> that suits you.</span
+              ></span
+            >
+          </li>
+        {/if}
+        {#if data.supportEmail}
+          <li class="flex gap-4">
+            <span
+              class="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary"
+              ><Icon name="mail" /></span
+            >
+            <span
+              ><span class="block font-semibold">Email</span><a
+                class="link text-base-content/70"
+                href="mailto:{data.supportEmail}">{data.supportEmail}</a
+              ></span
+            >
+          </li>
+        {/if}
+      </ul>
+    </div>
+
+    <div>
+      {#if showSuccess}
         <div
-          class="card card-bordered shadow-lg py-6 px-6 mx-2 lg:mx-0 lg:p-6 mb-10"
+          class="rounded-box border border-base-300 bg-base-100 p-8 shadow-xl"
+          role="status"
         >
-          <div class="text-2xl font-bold mb-4">Thank you!</div>
-          <p class="">{data.successMessage}</p>
+          <span
+            class="grid h-12 w-12 place-items-center rounded-full bg-success/15 text-success"
+            ><Icon name="check" /></span
+          >
+          <h2 class="mt-4 text-2xl font-bold">Thank you!</h2>
+          <p class="mt-2 text-base-content/70">{data.successMessage}</p>
         </div>
-      </div>
-    {:else}
-      <div class="card card-bordered shadow-lg p-4 pt-6 mx-2 lg:mx-0 lg:p-6">
+      {:else}
         <form
-          class="form-widget flex flex-col"
+          class="rounded-box border border-base-300 bg-base-100 p-6 sm:p-8 shadow-xl grid gap-4 sm:grid-cols-2"
           method="POST"
           action="?/submitContactUs"
           use:enhance={handleSubmit}
@@ -128,24 +172,28 @@
             </label>
           </div>
           {#each formFields as field}
-            <label for={field.id}>
-              <div class="flex flex-row">
-                <div class="text-base font-bold">{field.label}</div>
-                {#if errors[field.id]}
-                  <div class="text-red-600 grow text-sm ml-2 text-right">
-                    {errors[field.id]}
-                  </div>
-                {/if}
-              </div>
+            <label
+              for={field.id}
+              class={field.inputType === "textarea" ||
+              field.inputType === "email"
+                ? "sm:col-span-2"
+                : ""}
+            >
+              <span class="flex justify-between text-sm font-medium mb-1">
+                {field.label}
+                {#if errors[field.id]}<span class="text-error font-normal"
+                    >{errors[field.id]}</span
+                  >{/if}
+              </span>
               {#if field.inputType === "textarea"}
                 <textarea
                   id={field.id}
                   name={field.id}
                   autocomplete={field.autocomplete}
-                  rows={4}
-                  class="{errors[field.id]
-                    ? 'input-error'
-                    : ''} h-24 input-sm mt-1 input input-bordered w-full mb-3 text-base py-4"
+                  rows={5}
+                  class="textarea w-full {errors[field.id]
+                    ? 'textarea-error'
+                    : ''}"
                 ></textarea>
               {:else}
                 <input
@@ -153,25 +201,24 @@
                   name={field.id}
                   type={field.inputType}
                   autocomplete={field.autocomplete}
-                  class="{errors[field.id]
-                    ? 'input-error'
-                    : ''} input-sm mt-1 input input-bordered w-full mb-3 text-base py-4"
+                  class="input w-full {errors[field.id] ? 'input-error' : ''}"
                 />
               {/if}
             </label>
           {/each}
-
-          {#if Object.keys(errors).length > 0}
-            <p class="text-red-600 text-sm mb-2">
-              Please resolve above issues.
-            </p>
-          {/if}
-
-          <button class="btn btn-primary {loading ? 'btn-disabled' : ''}"
-            >{loading ? "Submitting" : "Submit"}</button
+          {#if errors._}<p
+              class="text-error text-sm sm:col-span-2"
+              role="alert"
+            >
+              {errors._}
+            </p>{/if}
+          <button
+            class="btn btn-primary sm:col-span-2 {loading
+              ? 'btn-disabled'
+              : ''}">{loading ? "Sending…" : "Send message"}</button
           >
         </form>
-      </div>
-    {/if}
+      {/if}
+    </div>
   </div>
-</div>
+</section>

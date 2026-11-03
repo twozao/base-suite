@@ -12,6 +12,7 @@ export type AdminNavItem = {
   permission: Permission
   icon: string // SVG path data (24x24, stroke)
   module?: ModuleId
+  group: "Overview" | "Content" | "Customers" | "Configuration"
 }
 
 export const isModuleEnabled = (id: ModuleId): boolean =>
@@ -31,31 +32,34 @@ const ICONS = {
     "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z",
   audit:
     "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4",
+  home: "M4 5h16v6H4zM4 15h7v4H4zm11 0h5v4h-5z",
+  blog: "M4 4h16v16H4zM8 8h8M8 12h8M8 16h5",
+  image:
+    "M4 5h16a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V6a1 1 0 011-1zm0 11l5-5 4 4 3-3 4 4M15 9.5a1.5 1.5 0 100-3 1.5 1.5 0 000 3z",
+  brush: "M7 21a4 4 0 01-4-4c0-2 2-3 2-5a3 3 0 016 0v3a6 6 0 01-4 6zm4-9l9-9",
+  tag: "M3 12V4a1 1 0 011-1h8l9 9-9 9-9-9zm5-4.5v.01",
   settings:
     "M10.3 4.3c.4-1.7 3-1.7 3.4 0a1.7 1.7 0 002.6 1.1c1.5-.9 3.3.8 2.4 2.4a1.7 1.7 0 001 2.5c1.8.4 1.8 3 0 3.4a1.7 1.7 0 00-1 2.6c.9 1.5-.9 3.3-2.4 2.4a1.7 1.7 0 00-2.6 1c-.4 1.8-3 1.8-3.4 0a1.7 1.7 0 00-2.6-1c-1.5.9-3.3-.9-2.4-2.4a1.7 1.7 0 00-1-2.6c-1.8-.4-1.8-3 0-3.4a1.7 1.7 0 001-2.6c-.9-1.5.9-3.3 2.4-2.4 1 .6 2.3.1 2.6-1zM15 12a3 3 0 11-6 0 3 3 0 016 0z",
 }
 
 const ALL_ADMIN_NAV: AdminNavItem[] = [
   {
+    group: "Overview",
     href: "/admin",
     label: "Dashboard",
     permission: "admin.access",
     icon: ICONS.dashboard,
   },
+
   {
-    href: "/admin/users",
-    label: "Users",
-    permission: "users.view",
-    icon: ICONS.users,
+    group: "Content",
+    href: "/admin/homepage",
+    label: "Homepage",
+    permission: "cms.edit",
+    icon: ICONS.home,
   },
   {
-    href: "/admin/subscriptions",
-    label: "Subscriptions",
-    permission: "billing.view",
-    icon: ICONS.card,
-    module: "subscriptions",
-  },
-  {
+    group: "Content",
     href: "/admin/pages",
     label: "Pages",
     permission: "cms.edit",
@@ -63,13 +67,38 @@ const ALL_ADMIN_NAV: AdminNavItem[] = [
     module: "cms",
   },
   {
-    href: "/admin/contact",
-    label: "Contact inbox",
-    permission: "contact.manage",
-    icon: ICONS.inbox,
-    module: "contact",
+    group: "Content",
+    href: "/admin/blog",
+    label: "Blog",
+    permission: "cms.edit",
+    icon: ICONS.blog,
+    module: "cms",
   },
   {
+    group: "Content",
+    href: "/admin/media",
+    label: "Media",
+    permission: "cms.edit",
+    icon: ICONS.image,
+  },
+
+  {
+    group: "Customers",
+    href: "/admin/users",
+    label: "Users",
+    permission: "users.view",
+    icon: ICONS.users,
+  },
+  {
+    group: "Customers",
+    href: "/admin/subscriptions",
+    label: "Subscriptions",
+    permission: "billing.view",
+    icon: ICONS.card,
+    module: "subscriptions",
+  },
+  {
+    group: "Customers",
     href: "/admin/support",
     label: "Live chat",
     permission: "chat.respond",
@@ -77,23 +106,50 @@ const ALL_ADMIN_NAV: AdminNavItem[] = [
     module: "chat",
   },
   {
+    group: "Customers",
+    href: "/admin/contact",
+    label: "Contact inbox",
+    permission: "contact.manage",
+    icon: ICONS.inbox,
+    module: "contact",
+  },
+  {
+    group: "Customers",
     href: "/admin/bookings",
     label: "Bookings",
     permission: "bookings.view",
     icon: ICONS.calendar,
     module: "booking",
   },
+
   {
-    href: "/admin/audit",
-    label: "Audit log",
-    permission: "audit.view",
-    icon: ICONS.audit,
+    group: "Configuration",
+    href: "/admin/site",
+    label: "Brand & navigation",
+    permission: "settings.manage",
+    icon: ICONS.brush,
   },
   {
+    group: "Configuration",
+    href: "/admin/pricing",
+    label: "Pricing plans",
+    permission: "settings.manage",
+    icon: ICONS.tag,
+    module: "subscriptions",
+  },
+  {
+    group: "Configuration",
     href: "/admin/settings",
     label: "Settings",
     permission: "settings.manage",
     icon: ICONS.settings,
+  },
+  {
+    group: "Configuration",
+    href: "/admin/audit",
+    label: "Audit log",
+    permission: "audit.view",
+    icon: ICONS.audit,
   },
 ]
 

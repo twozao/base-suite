@@ -9,6 +9,7 @@ insert into public.user_roles (user_id, role) values
   ('00000000-0000-0000-0000-00000000000a', 'admin'),
   ('00000000-0000-0000-0000-00000000000c', 'editor');
 insert into public.cms_pages (slug, title, status) values ('about', 'About', 'published'), ('secret', 'Draft', 'draft');
+insert into public.posts (slug, title, status, published_at) values ('hello', 'Hello', 'published', now()), ('wip', 'WIP', 'draft', null);
 insert into public.chat_conversations (id, user_id) values ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-00000000000b');
 insert into public.chat_messages (conversation_id, sender, body) values ('10000000-0000-0000-0000-000000000001', 'visitor', 'hi');
 
@@ -25,6 +26,7 @@ end $$;
 set role anon;
 do $$ begin
   assert (select count(*) from public.cms_pages) = 1, 'anon sees only published pages';
+  assert (select count(*) from public.posts) = 1, 'anon sees only published posts';
   assert (select count(*) from public.chat_messages) = 0, 'anon sees no chat';
   assert (select count(*) from public.user_roles) = 0, 'anon sees no roles';
 end $$;
@@ -48,6 +50,8 @@ do $$ begin
   begin
     update public.cms_pages set body_html = '<script>x</script>' where slug = 'about';
     if found then raise exception 'user could write cms_pages'; end if;
+    update public.posts set body_html = '<script>x</script>' where slug = 'hello';
+    if found then raise exception 'user could write posts'; end if;
   exception when insufficient_privilege then null;
   end;
   begin
@@ -68,6 +72,7 @@ set role authenticated;
 set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
 do $$ begin
   assert (select count(*) from public.cms_pages) = 2, 'editor sees drafts';
+  assert (select count(*) from public.posts) = 2, 'editor sees draft posts';
   assert (select count(*) from public.chat_messages) = 0, 'editor cannot read chat';
 end $$;
 reset role;

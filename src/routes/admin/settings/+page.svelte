@@ -34,45 +34,10 @@
 />
 
 <div class="space-y-6 max-w-3xl">
-  <form
-    id="general"
-    method="POST"
-    action="?/general"
-    use:enhance={keep}
-    class="card bg-base-100 border border-base-300"
-  >
-    <div class="card-body gap-4">
-      <h2 class="card-title">General</h2>
-      <label class="block"
-        ><span class="label text-sm whitespace-normal mb-1"
-          >Public support email</span
-        >
-        <input
-          class="input w-full"
-          type="email"
-          name="supportEmail"
-          value={data.settings.general.supportEmail}
-          maxlength="320"
-        /></label
-      >
-      <label class="block"
-        ><span class="label text-sm whitespace-normal mb-1"
-          >Announcement (reserved for a site banner)</span
-        >
-        <input
-          class="input w-full"
-          name="announcement"
-          value={data.settings.general.announcement}
-          maxlength="300"
-        /></label
-      >
-      <div class="flex items-center gap-4">
-        <button class="btn btn-primary btn-sm">Save</button>{@render status(
-          "general",
-        )}
-      </div>
-    </div>
-  </form>
+  <p class="text-sm text-base-content/70">
+    Site name, logo, colours, menus and the announcement bar are in
+    <a class="link" href="/admin/site">Brand & navigation</a>.
+  </p>
 
   {#if data.modules.chat}
     <form

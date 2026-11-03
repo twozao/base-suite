@@ -53,13 +53,6 @@ const save = async (
 }
 
 export const actions: Actions = {
-  general: async (event) => {
-    const f = await event.request.formData()
-    return save(event, "general", {
-      supportEmail: str(f, "supportEmail"),
-      announcement: str(f, "announcement"),
-    })
-  },
   chat: async (event) => {
     const f = await event.request.formData()
     return save(event, "chat", {

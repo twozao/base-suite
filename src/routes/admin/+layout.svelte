@@ -51,13 +51,23 @@
       class="w-64 min-h-full bg-base-100 border-r border-base-300 flex flex-col"
     >
       <div class="px-5 py-4 border-b border-base-300">
-        <a href="/admin" class="font-bold text-lg block">{data.siteName}</a>
+        <a href="/admin" class="font-bold text-lg flex items-center gap-2"
+          ><span
+            class="grid h-7 w-7 place-items-center rounded-md bg-primary text-primary-content text-xs"
+            >{data.siteName.charAt(0)}</span
+          >{data.siteName}</a
+        >
         <span class="text-xs uppercase tracking-wider opacity-60"
           >Admin portal</span
         >
       </div>
-      <ul class="menu w-full grow gap-1 p-3">
-        {#each data.nav as item}
+      <ul class="menu w-full grow gap-0.5 p-3">
+        {#each data.nav as item, i}
+          {#if item.group !== "Overview" && item.group !== data.nav[i - 1]?.group}
+            <li class="menu-title mt-3 text-xs uppercase tracking-wider">
+              {item.group}
+            </li>
+          {/if}
           <li>
             <a
               href={item.href}

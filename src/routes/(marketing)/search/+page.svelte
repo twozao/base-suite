@@ -1,156 +1,53 @@
 <script lang="ts">
-  import { page } from "$app/stores"
-  import { browser } from "$app/environment"
-  import { onMount } from "svelte"
-  import Fuse from "fuse.js"
-  import { goto } from "$app/navigation"
-  import { dev } from "$app/environment"
-
-  const fuseOptions = {
-    keys: [
-      { name: "title", weight: 3 },
-      { name: "description", weight: 2 },
-      { name: "body", weight: 1 },
-    ],
-    ignoreLocation: true,
-    threshold: 0.3,
-  }
-
-  let fuse: Fuse<Result> | undefined = $state()
-
-  let loading = $state(true)
-  let error = $state(false)
-  onMount(async () => {
-    try {
-      const response = await fetch("/search/api.json")
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      const searchData = await response.json()
-      if (searchData && searchData.index && searchData.indexData) {
-        const index = Fuse.parseIndex(searchData.index)
-        fuse = new Fuse<Result>(searchData.indexData, fuseOptions, index)
-      }
-    } catch (e) {
-      console.error("Failed to load search data", e)
-      error = true
-    } finally {
-      loading = false
-      document.getElementById("search-input")?.focus()
-    }
-  })
-
-  type Result = {
-    item: {
-      title: string
-      description: string
-      body: string
-      path: string
-    }
-  }
-  let results: Result[] = $state([])
-
-  // searchQuery is $page.url.hash minus the "#" at the beginning if present
-  let searchQuery = $state(decodeURIComponent($page.url.hash.slice(1) ?? ""))
-  $effect(() => {
-    if (fuse) {
-      results = fuse.search(searchQuery)
-    }
-  })
-  // Update the URL hash when searchQuery changes so the browser can bookmark/share the search results
-  $effect(() => {
-    if (browser && window.location.hash.slice(1) !== searchQuery) {
-      goto("#" + searchQuery, { keepFocus: true })
-    }
-  })
-
-  let focusItem = $state(0)
-  function onKeyDown(event: KeyboardEvent) {
-    if (event.key === "Escape") {
-      searchQuery = ""
-    } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-      focusItem += event.key === "ArrowDown" ? 1 : -1
-      if (focusItem < 0) {
-        focusItem = 0
-      } else if (focusItem > results.length) {
-        focusItem = results.length
-      }
-      if (focusItem === 0) {
-        document.getElementById("search-input")?.focus()
-      } else {
-        document.getElementById(`search-result-${focusItem}`)?.focus()
-      }
-    }
-  }
+  import Icon from "$lib/components/site/Icon.svelte"
+  let { data } = $props()
 </script>
 
-<svelte:window onkeydown={onKeyDown} />
-
 <svelte:head>
-  <title>Search</title>
-  <meta name="description" content="Search our website." />
+  <title>Search | {data.site.brand.siteName}</title>
+  <meta name="robots" content="noindex" />
 </svelte:head>
 
-<div class="py-8 lg:py-12 px-6 max-w-lg mx-auto">
-  <div
-    class="text-3xl lg:text-5xl font-medium text-primary flex gap-3 items-baseline text-center place-content-center"
-  >
-    <div
-      class="text-center leading-relaxed font-bold bg-clip-text text-transparent bg-linear-to-r from-primary to-accent"
-    >
-      Search
-    </div>
-  </div>
-  <label class="input input-bordered flex items-center gap-2 mt-10 mb-5 w-full">
-    <input
-      id="search-input"
-      type="text"
-      class="grow w-full"
-      placeholder="Search"
-      bind:value={searchQuery}
-      onfocus={() => (focusItem = 0)}
-      aria-label="Search input"
-    />
-  </label>
+<div class="mx-auto max-w-3xl px-4 sm:px-6 py-16">
+  <h1 class="text-4xl font-bold tracking-tight">Search</h1>
+  <form method="GET" class="mt-6" role="search">
+    <label class="input input-lg w-full">
+      <Icon name="search" class="h-5 w-5 opacity-50" />
+      <!-- svelte-ignore a11y_autofocus -->
+      <input
+        type="search"
+        name="q"
+        value={data.q}
+        placeholder="Search pages and posts…"
+        maxlength="100"
+        aria-label="Search"
+        autofocus
+      />
+    </label>
+  </form>
 
-  {#if loading && searchQuery.length > 0}
-    <div class="text-center mt-10 text-accent text-xl">Loading...</div>
+  {#if data.q.length >= 2}
+    <p class="mt-6 text-sm text-base-content/60">
+      {data.results.length} result{data.results.length === 1 ? "" : "s"} for “{data.q}”
+    </p>
+    <ul class="mt-4 divide-y divide-base-300">
+      {#each data.results as r}
+        <li class="py-5">
+          <a href={r.href} class="group block">
+            <span class="badge badge-ghost badge-sm">{r.kind}</span>
+            <h2 class="mt-2 text-lg font-semibold group-hover:text-primary">
+              {r.title}
+            </h2>
+            {#if r.excerpt}<p class="mt-1 text-base-content/70">
+                {r.excerpt}
+              </p>{/if}
+          </a>
+        </li>
+      {:else}
+        <li class="py-10 text-center text-base-content/60">
+          Nothing found. Try another word.
+        </li>
+      {/each}
+    </ul>
   {/if}
-
-  {#if error}
-    <div class="text-center mt-10 text-accent text-xl">
-      Error connecting to search. Please try again later.
-    </div>
-  {/if}
-
-  {#if !loading && searchQuery.length > 0 && results.length === 0 && !error}
-    <div class="text-center mt-10 text-accent text-xl">No results found</div>
-    {#if dev}
-      <div class="text-center mt-4 font-mono">
-        Development mode only message: if you're missing content, rebuild your
-        local search index with `npm run build`
-      </div>
-    {/if}
-  {/if}
-
-  <div>
-    {#each results as result, i}
-      <a
-        href={result.item.path || "/"}
-        id="search-result-{i + 1}"
-        class="card my-6 bg-white shadow-xl flex-row overflow-hidden focus:mx-[-10px] focus:my-[-5px] focus:border-4 focus:border-secondary"
-      >
-        <div class="flex-none w-6 md:w-32 bg-secondary"></div>
-        <div class="py-6 px-6">
-          <div class="text-xl">{result.item.title}</div>
-          <div class="text-sm text-accent">
-            {result.item.path}
-          </div>
-          <div class="text-slate-500">{result.item.description}</div>
-        </div>
-      </a>
-    {/each}
-  </div>
-
-  <div></div>
 </div>

@@ -1,6 +1,16 @@
 import { z } from "zod"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database, Json } from "../../DatabaseDefinitions"
+import {
+  brandSchema,
+  navigationSchema,
+  homeSchema,
+  pricingSchema,
+  DEFAULT_BRAND,
+  DEFAULT_NAVIGATION,
+  DEFAULT_HOME,
+  DEFAULT_PRICING,
+} from "./content_schema"
 
 // Every runtime-editable setting is declared here with a schema and default.
 // Unknown keys in the database are ignored; invalid values fall back to the
@@ -19,6 +29,10 @@ export const calendlyUrl = httpsUrl.refine(
 )
 
 export const settingsSchema = {
+  brand: brandSchema.default(DEFAULT_BRAND),
+  navigation: navigationSchema.default(DEFAULT_NAVIGATION),
+  home: homeSchema.default(DEFAULT_HOME),
+  pricing: pricingSchema.default(DEFAULT_PRICING),
   general: z
     .object({
       supportEmail: z.string().trim().email().max(320).or(z.literal("")),

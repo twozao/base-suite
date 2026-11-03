@@ -30,7 +30,7 @@ const config = {
         "script-src": ["self"],
         // Svelte transitions and the Supabase auth UI inject inline styles
         "style-src": ["self", "unsafe-inline"],
-        "img-src": ["self", "data:", "https:"],
+        "img-src": ["self", "data:", "https:", ...supabaseOrigins],
         "font-src": ["self", "data:"],
         "connect-src": [
           "self",

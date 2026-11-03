@@ -8,7 +8,21 @@
   }
 
   let { children }: Props = $props()
+  import { page } from "$app/stores"
+  const site = $derived($page.data.site)
+  // Built as a string so the CSS preprocessor doesn't try to parse it
+  const STYLE_OPEN = "<" + "style>"
+  const STYLE_CLOSE = "</" + "style>"
 </script>
+
+<svelte:head>
+  {#if site}
+    <!-- Brand colours from Admin -> Site (validated hex values) -->
+    <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+    {@html STYLE_OPEN + site.themeCss + STYLE_CLOSE}
+    <meta name="theme-color" content={site.brand.primaryColor} />
+  {/if}
+</svelte:head>
 
 {#if $navigating}
   <!-- 

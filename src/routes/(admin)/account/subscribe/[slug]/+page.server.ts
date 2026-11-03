@@ -6,6 +6,7 @@ import {
   getOrCreateCustomerId,
 } from "../../subscription_helpers.server"
 import type { PageServerLoad } from "./$types"
+import { getSettings } from "$lib/server/settings"
 const stripe = new Stripe(PRIVATE_STRIPE_API_KEY, { apiVersion: "2023-08-16" })
 
 export const load: PageServerLoad = async ({
@@ -18,8 +19,13 @@ export const load: PageServerLoad = async ({
     redirect(303, "/login")
   }
 
-  if (params.slug === "free_plan") {
-    // plan with no stripe_price_id. Redirect to account home
+  // The URL names one of the plans from Admin -> Pricing. Only that plan's
+  // configured Stripe price can be checked out (never a price id from the URL).
+  const { pricing } = await getSettings(supabaseServiceRole)
+  const plan = pricing.plans.find((p) => p.id === params.slug)
+  if (!plan) error(404, "Plan not found")
+  if (!plan.stripePriceId) {
+    // Free plan, or a paid plan that isn't connected to Stripe yet
     redirect(303, "/account")
   }
 
@@ -36,6 +42,7 @@ export const load: PageServerLoad = async ({
 
   const { primarySubscription } = await fetchSubscription({
     customerId,
+    plans: pricing.plans,
   })
   if (primarySubscription) {
     // User already has plan, we shouldn't let them buy another
@@ -47,7 +54,7 @@ export const load: PageServerLoad = async ({
     const stripeSession = await stripe.checkout.sessions.create({
       line_items: [
         {
-          price: params.slug,
+          price: plan.stripePriceId,
           quantity: 1,
         },
       ],

@@ -4,6 +4,8 @@ import {
   getOrCreateCustomerId,
 } from "../../subscription_helpers.server"
 import type { PageServerLoad } from "./$types"
+import { getSettings } from "$lib/server/settings"
+import { plansForDisplay } from "$lib/server/pricing"
 
 export const load: PageServerLoad = async ({
   locals: { safeGetSession, supabaseServiceRole },
@@ -24,12 +26,14 @@ export const load: PageServerLoad = async ({
     })
   }
 
+  const { pricing } = await getSettings(supabaseServiceRole)
   const {
     primarySubscription,
     hasEverHadSubscription,
     error: fetchErr,
   } = await fetchSubscription({
     customerId,
+    plans: pricing.plans,
   })
   if (fetchErr) {
     console.error("Error fetching subscription", fetchErr)
@@ -41,6 +45,9 @@ export const load: PageServerLoad = async ({
   return {
     isActiveCustomer: !!primarySubscription,
     hasEverHadSubscription,
-    currentPlanId: primarySubscription?.appSubscription?.id,
+    currentPlanId:
+      primarySubscription?.appSubscription?.id ?? pricing.plans[0]?.id,
+    currentPlanName: primarySubscription?.appSubscription?.name ?? "",
+    plans: plansForDisplay(pricing.plans, true),
   }
 }

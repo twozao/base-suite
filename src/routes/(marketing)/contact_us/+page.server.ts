@@ -30,7 +30,10 @@ const contactSchema = z.object({
 export const load: PageServerLoad = async ({ locals }) => {
   requireModule("contact")
   const settings = await getSettings(locals.supabaseServiceRole)
-  return { successMessage: settings.contact.successMessage }
+  return {
+    successMessage: settings.contact.successMessage,
+    supportEmail: settings.general.supportEmail,
+  }
 }
 
 export const actions: Actions = {

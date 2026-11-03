@@ -2,7 +2,7 @@ import { error } from "@sveltejs/kit"
 import { env } from "$env/dynamic/private"
 import { requireModule, requirePermission } from "$lib/server/auth/staff"
 import { pageParams } from "$lib/server/pagination"
-import { pricingPlans } from "../../(marketing)/pricing/pricing_plans"
+import { getSettings } from "$lib/server/settings"
 import type { PageServerLoad } from "./$types"
 
 const STATUSES = [
@@ -42,10 +42,10 @@ export const load: PageServerLoad = async (event) => {
   ])
   if (e) error(500, "Could not load subscriptions")
 
+  const { plans } = (await getSettings(db)).pricing
   const planName = (productId: string | null) =>
-    pricingPlans.find(
-      (p) => "stripe_product_id" in p && p.stripe_product_id === productId,
-    )?.name ??
+    plans.find((p) => !!p.stripeProductId && p.stripeProductId === productId)
+      ?.name ??
     productId ??
     "—"
 

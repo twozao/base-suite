@@ -124,6 +124,23 @@ const securityHeaders: Handle = async ({ event, resolve }) => {
   if (event.url.protocol === "https:") {
     h.set("strict-transport-security", "max-age=63072000; includeSubDomains")
   }
+  // Anonymous visitors on public pages: let a CDN cache briefly so admin
+  // edits show up within a minute while traffic spikes hit the edge, not
+  // the database. Signed-in users and anything setting cookies stay private.
+  const path = event.url.pathname
+  if (
+    event.request.method === "GET" &&
+    !event.locals.user &&
+    !h.has("cache-control") &&
+    !h.has("set-cookie") &&
+    (h.get("content-type") ?? "").startsWith("text/html") &&
+    !/^\/(admin|account|login|auth|api|search)(\/|$)/.test(path)
+  ) {
+    h.set(
+      "cache-control",
+      "public, max-age=0, s-maxage=60, stale-while-revalidate=600",
+    )
+  }
   // Never let shared caches store anything personalised.
   if (
     event.url.pathname.startsWith("/admin") ||

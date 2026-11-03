@@ -60,6 +60,25 @@ export type CmsPageRow = {
   created_at: string
   updated_at: string
 }
+export type PostRow = {
+  id: string
+  slug: string
+  title: string
+  excerpt: string | null
+  body_md: string
+  body_html: string
+  cover_image_url: string | null
+  author_name: string | null
+  tags: string[]
+  seo_title: string | null
+  seo_description: string | null
+  status: CmsStatus
+  published_at: string | null
+  created_by: string | null
+  updated_by: string | null
+  created_at: string
+  updated_at: string
+}
 export type CmsRevisionRow = {
   id: number
   page_id: string
@@ -246,6 +265,7 @@ export interface Database {
         "key" | "window_start" | "hits"
       >
       cms_pages: Table<CmsPageRow, "slug" | "title">
+      posts: Table<PostRow, "slug" | "title">
       cms_page_revisions: Table<CmsRevisionRow, "page_id" | "title" | "body_md">
       chat_conversations: Table<ChatConversationRow, never>
       chat_messages: Table<

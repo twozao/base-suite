@@ -1,18 +1,27 @@
 <script lang="ts">
-  import { WebsiteName } from "../../../config"
   let { data } = $props()
 </script>
 
 <svelte:head>
-  <title>{data.page.metaTitle} | {WebsiteName}</title>
+  <title>{data.page.metaTitle} | {data.site.brand.siteName}</title>
   <meta name="description" content={data.page.metaDescription} />
   <meta property="og:title" content={data.page.metaTitle} />
   <meta property="og:description" content={data.page.metaDescription} />
 </svelte:head>
 
-<article class="prose prose-lg mx-auto px-6 py-12 max-w-3xl">
-  <h1>{data.page.title}</h1>
-  <!-- Sanitised at save time by $lib/server/cms/markdown -->
-  <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-  {@html data.page.html}
+<article>
+  <header class="bg-brand-glow">
+    <div class="mx-auto max-w-3xl px-4 sm:px-6 pt-16 pb-10 sm:pt-24">
+      <h1 class="text-4xl sm:text-5xl font-bold tracking-tight">
+        {data.page.title}
+      </h1>
+    </div>
+  </header>
+  <div
+    class="prose prose-lg mx-auto max-w-3xl px-4 sm:px-6 pb-16 prose-a:text-primary prose-img:rounded-box"
+  >
+    <!-- Sanitised at save time by $lib/server/cms/markdown -->
+    <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+    {@html data.page.html}
+  </div>
 </article>

@@ -159,3 +159,24 @@ Other protections:
 3. Add server code under `src/lib/server/<module>/` and keep pure logic unit-testable.
 4. Add admin pages under `src/routes/admin/<module>/`. Call `requireModule("<id>")` and `requirePermission(event, "<perm>")` in every load and action.
 5. Register the sidebar entry in `src/lib/modules.ts` and any new permission in `src/lib/permissions.ts`.
+
+## Content management (site owner guide)
+
+Everything visitors see is edited from the admin portal. No code changes or redeploys are needed.
+
+| Admin page                             | What it controls                                                                                                                     |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| **Content → Homepage**                 | Hero, stats, features, steps, testimonials, FAQ, closing call to action. Each section can be shown or hidden.                        |
+| **Content → Pages**                    | Pages at `/<slug>` (About, Terms, Privacy, …)                                                                                        |
+| **Content → Blog**                     | Posts at `/blog/<slug>`: cover image, tags, author, scheduled publishing. RSS at `/blog/rss.xml`.                                    |
+| **Content → Media**                    | Image uploads (PNG, JPEG, WebP, GIF, AVIF, up to 5 MB; checked by file content). Every image field has a "Choose from Media" picker. |
+| **Configuration → Brand & navigation** | Site name, logo, colours (applied site-wide), header menu and button, footer columns, social links, announcement bar                 |
+| **Configuration → Pricing plans**      | Plans, prices, features and Stripe price/product IDs. Checkout only ever uses a configured plan's price.                             |
+
+Editors can manage the homepage, pages, blog and media. Brand, pricing and settings are admin-only.
+
+Sample content (three posts and an About page) lives in `supabase/seed.sql`. The Supabase CLI loads it on `supabase db reset`. Regenerate it with `npx vite-node scripts/generate-seed.ts`.
+
+Public pages are rendered on the server. Anonymous visitors get `s-maxage=60, stale-while-revalidate=600`, so admin edits appear within about a minute behind a CDN.
+
+If you self-host with `adapter-node`, set `BODY_SIZE_LIMIT=6M` so media uploads up to 5 MB are accepted.

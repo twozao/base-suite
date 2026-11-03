@@ -1,6 +1,6 @@
 import { requirePermission } from "$lib/server/auth/staff"
 import { adminNavFor, isModuleEnabled } from "$lib/modules"
-import { WebsiteName } from "../../config"
+import { getSettings } from "$lib/server/settings"
 import type { LayoutServerLoad } from "./$types"
 
 export const load: LayoutServerLoad = async (event) => {
@@ -26,7 +26,7 @@ export const load: LayoutServerLoad = async (event) => {
   ])
 
   return {
-    siteName: WebsiteName,
+    siteName: (await getSettings(db)).brand.siteName,
     staff: { email: staff.email, roles: staff.roles },
     permissions: [...p],
     nav: adminNavFor(p),

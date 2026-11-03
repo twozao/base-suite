@@ -21,7 +21,7 @@ create function auth.uid() returns uuid language sql stable as
 create function auth.role() returns text language sql stable as
   $$ select current_setting('role', true) $$;
 create schema storage;
-create table storage.buckets (id text primary key, name text);
+create table storage.buckets (id text primary key, name text, public boolean default false);
 create table storage.objects (id uuid default gen_random_uuid(), bucket_id text, name text);
 alter table storage.objects enable row level security;
 create function storage.foldername(name text) returns text[] language sql immutable as

@@ -3,7 +3,7 @@ import type { Database } from "../../../DatabaseDefinitions"
 
 import { PRIVATE_STRIPE_API_KEY } from "$env/static/private"
 import Stripe from "stripe"
-import { pricingPlans } from "../../(marketing)/pricing/pricing_plans"
+import type { Plan } from "$lib/server/content_schema"
 const stripe = new Stripe(PRIVATE_STRIPE_API_KEY, { apiVersion: "2023-08-16" })
 
 export const getOrCreateCustomerId = async ({
@@ -76,8 +76,10 @@ export const getOrCreateCustomerId = async ({
 
 export const fetchSubscription = async ({
   customerId,
+  plans,
 }: {
   customerId: string
+  plans: Plan[]
 }) => {
   // Fetch user's subscriptions
   let stripeSubscriptions
@@ -103,13 +105,13 @@ export const fetchSubscription = async ({
   if (primaryStripeSubscription) {
     const productId =
       primaryStripeSubscription?.items?.data?.[0]?.price.product ?? ""
-    appSubscription = pricingPlans.find((x) => {
-      return x.stripe_product_id === productId
+    appSubscription = plans.find((x) => {
+      return !!x.stripeProductId && x.stripeProductId === productId
     })
     if (!appSubscription) {
       return {
         error:
-          "Stripe subscription does not have matching app subscription in pricing_plans.ts (via product id match)",
+          "Stripe subscription does not match any plan in Admin -> Pricing (by Stripe product id)",
       }
     }
   }

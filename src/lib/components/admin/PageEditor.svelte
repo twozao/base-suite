@@ -1,5 +1,6 @@
 <script lang="ts">
   import { enhance } from "$app/forms"
+  import type { Snippet } from "svelte"
 
   type Values = {
     title: string
@@ -15,12 +16,18 @@
     canPublish,
     status = "draft",
     action,
+    prefix = "/",
+    extra,
   }: {
     values: Values
     errors?: Record<string, string>
     canPublish: boolean
     status?: string
     action: string
+    /** URL prefix shown before the slug ("/" for pages, "/blog/" for posts) */
+    prefix?: string
+    /** Extra sidebar fields (e.g. blog cover image, tags) */
+    extra?: Snippet
   } = $props()
 
   // The editor is re-mounted (via {#key}) when the server returns new values,
@@ -181,7 +188,8 @@
         <label class="block">
           <span class="label text-sm whitespace-normal mb-1">URL</span>
           <div class="join w-full">
-            <span class="join-item btn btn-sm btn-disabled no-animation">/</span
+            <span class="join-item btn btn-sm btn-disabled no-animation"
+              >{prefix}</span
             >
             <input
               name="slug"
@@ -197,6 +205,7 @@
           {#if errors.slug}<span class="text-error text-sm">{errors.slug}</span
             >{/if}
         </label>
+        {@render extra?.()}
         <label class="block">
           <span class="label text-sm whitespace-normal mb-1">Excerpt</span>
           <textarea
