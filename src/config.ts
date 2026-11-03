@@ -1,8 +1,4 @@
-export const WebsiteName: string = "Base Suite"
-// Your public origin, no trailing slash. Used for the sitemap, SEO tags and links in emails.
-export const WebsiteBaseUrl: string = "https://example.com"
-export const WebsiteDescription: string =
-  "Subscriptions, live chat, Calendly booking, a contact inbox, CMS pages and a role-based admin portal on SvelteKit and Supabase"
+// Site name, description and URLs live in Admin -> Brand & navigation (site_settings), not here.
 export const CreateProfileStep: boolean = true
 
 // -----------------------------------------------------------------------------

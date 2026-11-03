@@ -1,6 +1,6 @@
 import { redirect } from "@sveltejs/kit"
 import { isModuleEnabled } from "$lib/modules"
-import type { Actions, PageServerLoad } from "./$types"
+import type { PageServerLoad } from "./$types"
 
 export const load: PageServerLoad = async ({ locals }) => {
   const user = locals.user
@@ -43,14 +43,4 @@ export const load: PageServerLoad = async ({ locals }) => {
     upcoming: bookings?.data ?? [],
     chat: chat?.data ?? null,
   }
-}
-
-export const actions: Actions = {
-  signout: async ({ locals: { supabase, safeGetSession } }) => {
-    const { session } = await safeGetSession()
-    if (session) {
-      await supabase.auth.signOut()
-      redirect(303, "/")
-    }
-  },
 }
