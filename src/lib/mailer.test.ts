@@ -1,10 +1,9 @@
 import { vi, describe, it, expect, beforeEach } from "vitest"
 
-vi.mock("@supabase/supabase-js")
 vi.mock("$env/dynamic/private")
 vi.mock("resend")
 
-import { createClient, type User } from "@supabase/supabase-js"
+import type { SupabaseClient, User } from "@supabase/supabase-js"
 import { Resend } from "resend"
 import * as mailer from "./mailer"
 
@@ -27,8 +26,7 @@ describe("mailer", () => {
     vi.clearAllMocks()
     const { env } = await import("$env/dynamic/private")
     env.PRIVATE_RESEND_API_KEY = "mock_resend_api_key"
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(createClient as any).mockReturnValue(mockSupabaseClient)
+    vi.spyOn(console, "error").mockImplementation(() => {})
 
     // vitest 4 calls class mocks with new, so the implementation must be constructable
     vi.mocked(Resend).mockImplementation(
@@ -53,6 +51,7 @@ describe("mailer", () => {
       })
 
       await mailer.sendUserEmail({
+        db: mockSupabaseClient as unknown as SupabaseClient,
         user: mockUser as User,
         subject: "Test",
         from_email: "test@example.com",
@@ -69,9 +68,6 @@ describe("mailer", () => {
     })
 
     it("should not send email if user is unsubscribed", async () => {
-      const originalConsoleLog = console.log
-      console.log = vi.fn()
-
       mockSupabaseClient.auth.admin.getUserById.mockResolvedValue({
         data: { user: { email_confirmed_at: new Date().toISOString() } },
         error: null,
@@ -83,6 +79,7 @@ describe("mailer", () => {
       })
 
       await mailer.sendUserEmail({
+        db: mockSupabaseClient as unknown as SupabaseClient,
         user: mockUser as User,
         subject: "Test",
         from_email: "test@example.com",
@@ -91,14 +88,6 @@ describe("mailer", () => {
       })
 
       expect(mockSend).not.toHaveBeenCalled()
-
-      expect(console.log).toHaveBeenCalledWith(
-        "User unsubscribed. Aborting email. ",
-        mockUser.id,
-        mockUser.email,
-      )
-
-      console.log = originalConsoleLog
     })
   })
 

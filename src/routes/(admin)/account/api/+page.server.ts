@@ -268,6 +268,7 @@ export const actions: Actions = {
       })
       const { brand } = await getSettings(locals.supabaseServiceRole)
       await sendUserEmail({
+        db: locals.supabaseServiceRole,
         user,
         subject: "Welcome!",
         from_email:

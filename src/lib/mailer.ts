@@ -1,10 +1,11 @@
 import { Resend } from "resend"
 import { env } from "$env/dynamic/private"
-import { PRIVATE_SUPABASE_SERVICE_ROLE } from "$env/static/private"
-import { PUBLIC_SUPABASE_URL } from "$env/static/public"
-import { createClient, type User } from "@supabase/supabase-js"
+import type { SupabaseClient, User } from "@supabase/supabase-js"
 import type { Database } from "../DatabaseDefinitions"
 import handlebars from "handlebars"
+
+/** Templates that exist as src/lib/emails/<name>_text.hbs and <name>_html.hbs. */
+export type EmailTemplate = "welcome_email" | "newsletter_confirm"
 
 // Sends an email to the admin email address.
 // Does not throw errors, but logs them.
@@ -30,65 +31,64 @@ export const sendAdminEmail = async ({
     })
 
     if (resp.error) {
-      console.log("Failed to send admin email, error:", resp.error)
+      console.error("Failed to send admin email, error:", resp.error)
     }
   } catch (e) {
-    console.log("Failed to send admin email, error:", e)
+    console.error("Failed to send admin email, error:", e)
   }
 }
 
+// Sends a templated email to a user who has a verified address and has not unsubscribed.
+// `db` is the request's service-role client (locals.supabaseServiceRole).
 export const sendUserEmail = async ({
+  db,
   user,
   subject,
   from_email,
   template_name,
   template_properties,
 }: {
+  db: SupabaseClient<Database>
   user: User
   subject: string
   from_email: string
-  template_name: string
+  template_name: EmailTemplate
   template_properties: Record<string, string>
 }) => {
   const email = user.email
   if (!email) {
-    console.log("No email for user. Aborting email. ", user.id)
+    console.error("No email for user. Aborting email. ", user.id)
     return
   }
 
-  // Check if the user email is verified using the full user object from service role
-  // Oauth uses email_verified, and email auth uses email_confirmed_at
-  const serverSupabase = createClient<Database>(
-    PUBLIC_SUPABASE_URL,
-    PRIVATE_SUPABASE_SERVICE_ROLE,
-    { auth: { persistSession: false } },
-  )
-  const { data: serviceUserData } = await serverSupabase.auth.admin.getUserById(
-    user.id,
-  )
+  // Oauth sets email_verified, email auth sets email_confirmed_at
+  const { data: serviceUserData } = await db.auth.admin.getUserById(user.id)
   const emailVerified =
     serviceUserData.user?.email_confirmed_at ||
     serviceUserData.user?.user_metadata?.email_verified
 
   if (!emailVerified) {
-    console.log("User email not verified. Aborting email. ", user.id, email)
+    console.error("User email not verified. Aborting email. ", user.id, email)
     return
   }
 
-  // Fetch user profile to check unsubscribed status
-  const { data: profile, error: profileError } = await serverSupabase
+  const { data: profile, error: profileError } = await db
     .from("profiles")
     .select("unsubscribed")
     .eq("id", user.id)
     .single()
 
   if (profileError) {
-    console.log("Error fetching user profile. Aborting email. ", user.id, email)
+    console.error(
+      "Error fetching user profile. Aborting email. ",
+      user.id,
+      email,
+    )
     return
   }
 
   if (profile?.unsubscribed) {
-    console.log("User unsubscribed. Aborting email. ", user.id, email)
+    console.error("User unsubscribed. Aborting email. ", user.id, email)
     return
   }
 
@@ -111,7 +111,7 @@ export const sendTemplatedEmail = async ({
   subject: string
   to_emails: string[]
   from_email: string
-  template_name: string
+  template_name: EmailTemplate
   template_properties: Record<string, string>
 }) => {
   if (!env.PRIVATE_RESEND_API_KEY) {
@@ -144,33 +144,25 @@ export const sendTemplatedEmail = async ({
   }
 
   if (!plaintextBody && !htmlBody) {
-    console.log(
-      "No email body: requires plaintextBody or htmlBody. Template: ",
-      template_name,
-    )
+    console.error("No email body for template", template_name)
     return
   }
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const email: any = {
+    const content = htmlBody
+      ? { html: htmlBody, text: plaintextBody }
+      : { text: plaintextBody as string }
+    const resend = new Resend(env.PRIVATE_RESEND_API_KEY)
+    const resp = await resend.emails.send({
       from: from_email,
       to: to_emails,
-      subject: subject,
-    }
-    if (plaintextBody) {
-      email.text = plaintextBody
-    }
-    if (htmlBody) {
-      email.html = htmlBody
-    }
-    const resend = new Resend(env.PRIVATE_RESEND_API_KEY)
-    const resp = await resend.emails.send(email)
-
+      subject,
+      ...content,
+    })
     if (resp.error) {
-      console.log("Failed to send email, error:", resp.error)
+      console.error("Failed to send email, error:", resp.error)
     }
   } catch (e) {
-    console.log("Failed to send email, error:", e)
+    console.error("Failed to send email, error:", e)
   }
 }
