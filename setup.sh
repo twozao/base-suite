@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Local dev for Base Suite: SvelteKit app (Vite) plus a local Supabase stack in Docker.
+# Local dev for Base Suite: SvelteKit app (Vite) on SQLite. No database server, no Docker.
 set -euo pipefail
 cd "$(dirname "$0")"
 PROJECT_DIR="$PWD"
@@ -7,10 +7,7 @@ PORT="${BASE_SUITE_PORT:-5173}"
 PID_FILE=/tmp/base-suite-dev.pid
 PORT_FILE=/tmp/base-suite-dev.port
 LOG_FILE=/tmp/base-suite-dev.log
-API_URL="http://127.0.0.1:54321"
-STUDIO_URL="http://127.0.0.1:54323"
-MAIL_URL="http://127.0.0.1:54324"
-DB_URL="postgresql://postgres:postgres@127.0.0.1:54322/postgres"
+DB_FILE="$PROJECT_DIR/data/base-suite.db"
 
 log() { printf '\033[36m%s\033[0m\n' "$*"; }
 ok() { printf '\033[32m%s\033[0m\n' "$*"; }
@@ -19,14 +16,10 @@ err() { printf '\033[31m%s\033[0m\n' "$*" >&2; }
 
 need() { command -v "$1" >/dev/null 2>&1 || { err "$1 is required ($2)"; exit 1; }; }
 check_prereqs() {
-  need node "https://nodejs.org"
+  need node "https://nodejs.org, version 22 or newer"
   need npm "comes with node"
-  need docker "colima start, or Docker Desktop"
-  need supabase "brew install supabase/tap/supabase"
-  need psql "brew install postgresql@15"
   need lsof "macOS built in"
   need curl "macOS built in"
-  docker info >/dev/null 2>&1 || { err 'Docker is not running. Start colima or Docker Desktop first.'; exit 1; }
 }
 
 # App process: only ever kill the vite we started (PID file + command check), never a stranger on the port.
@@ -58,117 +51,60 @@ pick_port() {
 }
 app_url() { printf 'http://localhost:%s' "$(cat "$PORT_FILE" 2>/dev/null || echo "$PORT")"; }
 
-# Supabase stack
-db_running() { curl -fsS "$API_URL/auth/v1/health" >/dev/null 2>&1; }
-db_wait() {
-  for _ in {1..90}; do db_running && return; sleep 1; done
-  err 'Supabase did not become healthy; try ./setup.sh logs db'; return 1
-}
-db_start() {
-  if db_running; then ok 'Supabase already running'; return; fi
-  log 'Starting local Supabase (first run pulls Docker images, takes a few minutes)...'
-  supabase start >/dev/null
-  db_wait
-  ok "Supabase ready: API $API_URL, Studio $STUDIO_URL, Mail $MAIL_URL"
-}
-db_stop() { if supabase stop >/dev/null 2>&1; then ok 'Supabase stopped'; else warn 'Supabase was not running'; fi; }
-
-# .env from the local stack's keys. Keeps an existing Stripe key, otherwise uses a placeholder.
-write_env() {
-  db_running || { err 'Supabase must be running to read its keys (./setup.sh start)'; exit 1; }
-  local st url anon svc stripe
-  st="$(supabase status -o env)"
-  val() { printf '%s\n' "$st" | sed -n "s/^$1=//p" | sed -e 's/^"//' -e 's/"$//'; }
-  url="$(val API_URL)"; anon="$(val ANON_KEY)"; svc="$(val SERVICE_ROLE_KEY)"
-  [[ -n "$url" && -n "$anon" && -n "$svc" ]] || { err 'Could not read keys from supabase status'; exit 1; }
-  stripe=''
-  [[ -f .env ]] && stripe="$(sed -n "s/^PRIVATE_STRIPE_API_KEY='\(.*\)'$/\1/p" .env)"
-  [[ -n "$stripe" ]] || stripe='sk_test_placeholder'
-  cat > .env <<EOF
-# Local Supabase (supabase start). Regenerate with: ./setup.sh env
-PUBLIC_SUPABASE_URL='$url'
-PUBLIC_SUPABASE_ANON_KEY='$anon'
-PRIVATE_SUPABASE_SERVICE_ROLE='$svc'
-
-# Stripe test key. Placeholder until you add a real sk_test_ key.
-PRIVATE_STRIPE_API_KEY='$stripe'
-EOF
-  ok '.env written'
+ensure_env() {
+  [[ -f .env ]] && return
+  printf '# Local development. SQLite at data/base-suite.db; see .env.example for the optional keys.\n' > .env
+  ok 'Wrote .env'
 }
 
 start() {
   [[ -d node_modules ]] || { err 'Run ./setup.sh setup first'; exit 1; }
-  check_prereqs
-  db_start
-  [[ -f .env ]] || write_env
   if owned_pid; then ok "App already running at $(app_url)"; return; fi
   local port
   port="$(pick_port)"
-  [[ "$port" == "$PORT" ]] || warn "Port $PORT is busy, using $port"
-  nohup "$PROJECT_DIR/node_modules/.bin/vite" dev --port "$port" --strictPort >>"$LOG_FILE" 2>&1 &
-  echo $! >"$PID_FILE"; echo "$port" >"$PORT_FILE"
-  for _ in {1..60}; do
-    if curl -fsS "http://localhost:$port/" >/dev/null 2>&1; then
-      ok "App ready at http://localhost:$port (sign up at /login/sign_up, admin portal at /admin)"; return
-    fi
-    sleep 1
+  [[ "$port" != "$PORT" ]] && warn "Port $PORT is busy, using $port"
+  mkdir -p data
+  nohup "$PROJECT_DIR/node_modules/.bin/vite" dev --port "$port" --strictPort >> "$LOG_FILE" 2>&1 &
+  echo $! > "$PID_FILE"
+  echo "$port" > "$PORT_FILE"
+  for _ in {1..40}; do
+    if curl -fs -o /dev/null "http://localhost:$port/"; then ok "App ready at http://localhost:$port"; return; fi
+    owned_pid || { err "App exited early; see $LOG_FILE"; tail -n 20 "$LOG_FILE"; exit 1; }
+    sleep 0.5
   done
-  err "App did not start; see $LOG_FILE"; kill_port; exit 1
+  err "App did not answer in time; see $LOG_FILE"; exit 1
 }
+
 status() {
-  if db_running; then ok "Supabase: running (API $API_URL, Studio $STUDIO_URL, Mail $MAIL_URL)"; else warn 'Supabase: stopped'; fi
-  if owned_pid; then ok "App: running at $(app_url)"; else warn 'App: stopped'; fi
-}
-logs() {
-  case "${1:-app}" in
-    app) tail -n 100 "$LOG_FILE" ;;
-    db|auth|rest|kong|studio|storage|realtime|inbucket|edge_runtime|pg_meta|analytics|vector) docker logs --tail 100 "supabase_${1}_base-suite" ;;
-    *) err "Unknown service '$1'. Use app, db, auth, rest, kong, studio, storage, realtime or inbucket"; exit 1 ;;
-  esac
-}
-# Grants the admin role to an existing user. Sign up in the app first.
-admin() {
-  local email="${1:-}" found
-  [[ -n "$email" ]] || { err 'Usage: ./setup.sh admin you@example.com'; exit 1; }
-  db_running || { err 'Supabase is not running'; exit 1; }
-  # SQL goes in on stdin: psql only interpolates :'email' there, not in -c strings.
-  psql "$DB_URL" -q -v ON_ERROR_STOP=1 -v email="$email" <<'SQL'
-insert into public.user_roles (user_id, role)
-select id, 'admin' from auth.users where lower(email) = lower(:'email')
-on conflict do nothing;
-SQL
-  found="$(psql "$DB_URL" -At -v email="$email" <<'SQL'
-select count(*) from public.user_roles r join auth.users u on u.id = r.user_id
-where lower(u.email) = lower(:'email') and r.role = 'admin';
-SQL
-)"
-  if [[ "$found" == "1" ]]; then ok "$email is now an admin. Open $(app_url)/admin"; else err "No user with email $email. Sign up first at $(app_url)/login/sign_up"; exit 1; fi
+  if owned_pid; then ok "App running at $(app_url) (pid $(cat "$PID_FILE"))"; else warn 'App stopped'; fi
+  if [[ -f "$DB_FILE" ]]; then ok "Database: $DB_FILE ($(du -h "$DB_FILE" | cut -f1))"; else warn 'Database not created yet (starts with the app)'; fi
 }
 
 case "${1:-help}" in
   setup)
     check_prereqs
     npm install
-    db_start
-    [[ -f .env ]] || write_env
+    ensure_env
+    npm run db:migrate
+    npm run db:seed
     start ;;
-  start) start ;;
-  stop) kill_port; db_stop ;;
+  start) check_prereqs; ensure_env; start ;;
+  stop) kill_port ;;
   restart) kill_port; start ;;
   status) status ;;
-  logs) logs "${2:-app}" ;;
-  env) write_env ;;
-  admin) admin "${2:-}" ;;
-  db:reset) warn 'This wipes local data and re-applies supabase/migrations'; supabase db reset ;;
-  db:shell) psql "$DB_URL" ;;
+  logs) tail -n "${2:-100}" "$LOG_FILE" ;;
+  admin) [[ -n "${2:-}" ]] || { err 'Usage: ./setup.sh admin EMAIL'; exit 1; }; npm run --silent db:admin -- "$2" ;;
+  db:migrate) npm run db:migrate ;;
+  db:seed) npm run db:seed ;;
+  db:shell) need sqlite3 "brew install sqlite"; sqlite3 "$DB_FILE" ;;
+  db:reset) kill_port; rm -f "$DB_FILE" "$DB_FILE-wal" "$DB_FILE-shm"; ok 'Local database removed'; npm run db:migrate; npm run db:seed ;;
   test) npm run test_run ;;
-  test:rls) DATABASE_URL="$DB_URL" sh supabase/tests/run.sh && ok 'RLS tests passed' ;;
-  check) npm run check && npm run lint ;;
+  check) ./checks.sh ;;
   build) npm run build ;;
-  clean) kill_port; supabase stop --no-backup >/dev/null 2>&1 || true; rm -rf node_modules .svelte-kit build; ok 'Cleaned (node_modules, build output, local DB data)' ;;
-  help)
-    log 'setup | start | stop | restart | status | logs [app|db|auth|...] | env | admin EMAIL'
-    log 'db:reset | db:shell | test | test:rls | check | build | clean'
-    log "App on port $PORT (BASE_SUITE_PORT to change), Supabase API $API_URL, Studio $STUDIO_URL, Mail $MAIL_URL" ;;
-  *) err 'Unknown command. Use help.'; exit 1 ;;
+  clean) kill_port; rm -rf node_modules .svelte-kit build; ok 'Cleaned' ;;
+  help|*)
+    log 'setup | start | stop | restart | status | logs [n] | admin EMAIL'
+    log 'db:migrate | db:seed | db:shell | db:reset | test | check | build | clean'
+    log 'SQLite lives at data/base-suite.db. Set DATABASE_URL in .env to use Postgres instead.'
+    log 'The first account created at /login/sign_up becomes the admin; admin EMAIL grants it to another.' ;;
 esac

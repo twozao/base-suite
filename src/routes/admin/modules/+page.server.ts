@@ -43,7 +43,7 @@ export const actions: Actions = {
       const live = dependentsOf(id).filter((d) => sw[d] ?? true)
       if (live.length) {
         return fail(400, {
-          error: `Turn off ${live.join(", ")} first — they need ${mod.name}.`,
+          error: `Turn off ${live.join(", ")} first - they need ${mod.name}.`,
         })
       }
     }
@@ -51,15 +51,19 @@ export const actions: Actions = {
     // Turning a module on also turns on what it depends on.
     if (on) for (const d of mod.dependsOn) sw[d] = true
 
-    const db = event.locals.supabaseServiceRole
+    const db = event.locals.db
     const current = await getSettings(db)
-    const { error } = await saveSetting(
-      db,
-      "modules",
-      { ...current.modules, switches: sw },
-      staff.userId,
-    )
-    if (error) return fail(500, { error: "Could not save" })
+    try {
+      await saveSetting(
+        db,
+        "modules",
+        { ...current.modules, switches: sw },
+        staff.userId,
+      )
+    } catch (e) {
+      console.error("module toggle failed", e instanceof Error ? e.message : e)
+      return fail(500, { error: "Could not save" })
+    }
     setModuleSwitches(sw)
     await audit(event, on ? "module.enabled" : "module.disabled", {
       type: "module",

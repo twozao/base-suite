@@ -16,10 +16,10 @@ import type { RequestHandler } from "./$types"
 
 const noStore = { "cache-control": "private, no-store" }
 
-// GET /api/chat?after=<id> — widget state + new messages since `after`.
+// GET /api/chat?after=<id>: widget state + new messages since `after`.
 export const GET: RequestHandler = async (event) => {
   requireModule("chat")
-  const db = event.locals.supabaseServiceRole
+  const db = event.locals.db
   const settings = await getSettings(db)
   if (!settings.chat.enabled) {
     return json({ enabled: false }, { headers: noStore })
@@ -37,9 +37,10 @@ export const GET: RequestHandler = async (event) => {
     : []
   if (conversation && messages.some((m) => m.sender === "staff")) {
     await db
-      .from("chat_conversations")
-      .update({ unread_by_visitor: 0 })
-      .eq("id", conversation.id)
+      .updateTable("chat_conversations")
+      .set({ unread_by_visitor: 0 })
+      .where("id", "=", conversation.id)
+      .execute()
   }
 
   return json(
@@ -56,11 +57,11 @@ export const GET: RequestHandler = async (event) => {
   )
 }
 
-// POST /api/chat — send a message, starting a conversation if needed.
+// POST /api/chat: send a message, starting a conversation if needed.
 export const POST: RequestHandler = async (event) => {
   requireModule("chat")
   if (!isSameOrigin(event)) error(403, "Cross-origin request blocked")
-  const db = event.locals.supabaseServiceRole
+  const db = event.locals.db
   const settings = await getSettings(db)
   if (!settings.chat.enabled) error(404, "Chat is disabled")
 

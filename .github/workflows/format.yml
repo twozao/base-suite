@@ -2,11 +2,6 @@ name: Format Check
 
 on: [push, pull_request]
 
-env:
-  PUBLIC_SUPABASE_URL: "https://fake_test_url.supabase.co"
-  PUBLIC_SUPABASE_ANON_KEY: "fake_anon_key"
-  PRIVATE_SUPABASE_SERVICE_ROLE: "fake_service_role"
-
 jobs:
   build_and_test:
     name: Code Format Check
@@ -17,7 +12,7 @@ jobs:
       - uses: actions/setup-go@v5
 
       - name: NPM install
-        run: npm install
+        run: npm ci
 
       - name: Check Code Format
         run: npm run format_check

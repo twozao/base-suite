@@ -12,21 +12,20 @@ const cell = (v: string | null) => {
 export const GET: RequestHandler = async (event) => {
   requireModule("newsletter")
   await requirePermission(event, "newsletter.manage")
-  const { data } = await event.locals.supabaseServiceRole
-    .from("newsletter_subscribers")
-    .select("email, name, source, confirmed_at")
-    .eq("status", "confirmed")
-    .order("confirmed_at")
+  const rows = await event.locals.db
+    .selectFrom("newsletter_subscribers")
+    .select(["email", "name", "source", "confirmed_at"])
+    .where("status", "=", "confirmed")
+    .orderBy("confirmed_at")
     .limit(100_000)
+    .execute()
   const lines = [
     "email,name,source,confirmed_at",
-    ...(data ?? []).map((r) =>
+    ...rows.map((r) =>
       [r.email, r.name, r.source, r.confirmed_at].map(cell).join(","),
     ),
   ]
-  await audit(event, "newsletter.exported", undefined, {
-    rows: data?.length ?? 0,
-  })
+  await audit(event, "newsletter.exported", undefined, { rows: rows.length })
   return new Response(lines.join("\r\n") + "\r\n", {
     headers: {
       "content-type": "text/csv; charset=utf-8",

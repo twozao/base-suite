@@ -1,62 +1,39 @@
-# Platform modules
+# Modules, setup and the security model
 
-This fork adds five business modules and an admin portal on top of SaaS Starter. Each module can be switched off, and all of them follow the same security and performance rules.
+Base Suite is a small core plus eight independent modules. This page covers day-to-day setup, roles, the security model and the site owner guide. The design, module anatomy and how to build a module are in [ARCHITECTURE.md](ARCHITECTURE.md).
 
-| Module             | Public surface                       | Admin surface                                  | Turned off in                  |
-| ------------------ | ------------------------------------ | ---------------------------------------------- | ------------------------------ |
-| Subscriptions      | `/pricing`, checkout, billing portal | `/admin/subscriptions`                         | `EnabledModules.subscriptions` |
-| Contact form       | `/contact_us`                        | `/admin/contact` (inbox with status and notes) | `EnabledModules.contact`       |
-| Live chat          | Chat widget on every page            | `/admin/support` (inbox, replies, assignment)  | `EnabledModules.chat`          |
-| Booking (Calendly) | `/book`                              | `/admin/bookings`                              | `EnabledModules.booking`       |
-| CMS pages          | `/<slug>`                            | `/admin/pages` (editor, preview, revisions)    | `EnabledModules.cms`           |
+| Module                        | Public surface                       | Admin surface                                  |
+| ----------------------------- | ------------------------------------ | ---------------------------------------------- |
+| Pages & Blog `cms`            | `/<slug>`, `/blog`, `/search`        | `/admin/pages`, `/admin/blog`                  |
+| Contact form `contact`        | `/contact_us`                        | `/admin/contact` (inbox with status and notes) |
+| Live chat `chat`              | Chat widget on every page            | `/admin/support` (inbox, replies, assignment)  |
+| Online booking `booking`      | `/book`                              | `/admin/bookings`                              |
+| Newsletter `newsletter`       | Signup form, `/newsletter`           | `/admin/newsletter` (subscribers, CSV export)  |
+| Subscriptions `subscriptions` | `/pricing`, checkout, billing portal | `/admin/subscriptions`, `/admin/pricing`       |
+| CRM `crm`                     | none                                 | `/admin/crm`, `/admin/crm/deals`               |
+| Analytics `analytics`         | `/api/pv` beacon                     | `/admin/analytics`                             |
 
-The admin manager is always on. It covers the dashboard, users and roles, the audit log and settings.
+The core is always on: dashboard, users and roles, audit log, settings, brand and homepage editors, media library and the module manager.
 
-## Turning modules on and off
-
-Modules are set at build time in `src/config.ts`:
-
-```ts
-export const EnabledModules = {
-  subscriptions: true,
-  contact: true,
-  chat: true,
-  booking: true,
-  cms: true,
-}
-```
-
-When a module is off:
-
-- its routes, API endpoints and webhooks return 404
-- its admin pages disappear from the sidebar
-- its client code is not shipped
-
-Day-to-day options are edited in **Admin → Settings** and stored in the `site_settings` table, so changing them needs no redeploy. They include the chat greeting, the Calendly links and whether to send email notifications.
+Modules are compiled in with `InstalledModules` in `src/config.ts` and switched on or off at runtime in **Admin -> Modules**. When a module is off its routes, endpoints and webhooks return 404, its admin pages leave the sidebar and its data is kept. Day-to-day options (chat greeting, Calendly links, email alerts) are edited in **Admin -> Settings** and stored in `site_settings`, so changing them needs no redeploy.
 
 ## Setup
 
-1. **Run the migrations.** Apply `supabase/migrations/*.sql`, including `20261102000000_platform_modules.sql`.
-2. **Make yourself an admin.** Sign up on your site first. Then run this in the Supabase SQL editor:
-
-   ```sql
-   insert into public.user_roles (user_id, role)
-   select id, 'admin' from auth.users where email = 'you@example.com';
-   ```
-
-   From then on you can grant roles from **Admin → Users**.
-
+1. **Start it.** `./setup.sh setup` creates the SQLite database at `data/base-suite.db`, migrates it and seeds sample content. On a server, `npm run db:migrate` does the same, or just start the app: pending migrations run on boot.
+2. **Make yourself the admin.** The first account created at `/login/sign_up` becomes the admin. From then on grant roles in **Admin -> Users**, or run `./setup.sh admin you@example.com`.
 3. **Optional environment variables.** See `.env.example`.
 
-   | Variable                                        | Enables                                                   |
-   | ----------------------------------------------- | --------------------------------------------------------- |
-   | `PRIVATE_STRIPE_WEBHOOK_SECRET`                 | The subscription mirror behind Admin → Subscriptions      |
-   | `PRIVATE_CALENDLY_WEBHOOK_SIGNING_KEY`          | The booking sync behind Admin → Bookings                  |
-   | `PRIVATE_ADMIN_EMAIL`, `PRIVATE_RESEND_API_KEY` | Email alerts for new chats, contact requests and bookings |
+   | Variable                                                  | Enables                                                              |
+   | --------------------------------------------------------- | -------------------------------------------------------------------- |
+   | `DATABASE_URL`                                            | Postgres instead of the SQLite file                                  |
+   | `PRIVATE_RESEND_API_KEY`, `PRIVATE_FROM_EMAIL`            | Email verification, password reset, welcome email, newsletter opt-in |
+   | `PRIVATE_ADMIN_EMAIL`, `PRIVATE_FROM_ADMIN_EMAIL`         | Email alerts for new chats, contact requests and bookings            |
+   | `PRIVATE_STRIPE_API_KEY`, `PRIVATE_STRIPE_WEBHOOK_SECRET` | Checkout and the subscription mirror behind Admin -> Subscriptions   |
+   | `PRIVATE_CALENDLY_WEBHOOK_SIGNING_KEY`                    | The booking sync behind Admin -> Bookings                            |
 
 ### Stripe webhook
 
-In Stripe, go to **Developers → Webhooks → Add endpoint**:
+In Stripe, go to **Developers -> Webhooks -> Add endpoint**:
 
 - **URL:** `https://YOUR_DOMAIN/api/webhooks/stripe`
 - **Events:** `customer.subscription.created`, `.updated`, `.deleted`, `.paused`, `.resumed`
@@ -65,7 +42,7 @@ Copy the signing secret into `PRIVATE_STRIPE_WEBHOOK_SECRET`. Each event is veri
 
 ### Calendly
 
-1. In **Admin → Settings → Booking**, add each event type's public link, for example `https://calendly.com/you/intro`. Only `https://calendly.com/...` links are accepted.
+1. In **Admin -> Settings -> Booking**, add each event type's public link, for example `https://calendly.com/you/intro`. Only `https://calendly.com/...` links are accepted.
 2. To record bookings in the admin portal, create a webhook subscription. This needs a Calendly paid plan and a personal access token:
 
    ```sh
@@ -89,19 +66,21 @@ Each booking is linked to a user account when the invitee's email matches one.
 
 ## Roles and permissions
 
-Roles are stored in `public.user_roles`, which users cannot write to. That means nobody can grant themselves a role, even with the anon key and their own session.
+Roles are rows in `user_roles`, written only by the server after an admin's permission check, so nobody can grant themselves a role.
 
 | Permission                                        | admin | editor | support |
 | ------------------------------------------------- | :---: | :----: | :-----: |
-| `admin.access`                                    |   ✓   |   ✓    |    ✓    |
-| `users.view`                                      |   ✓   |        |    ✓    |
-| `users.manage_roles`                              |   ✓   |        |         |
-| `billing.view`                                    |   ✓   |        |         |
-| `cms.edit`, `cms.publish`                         |   ✓   |   ✓    |         |
-| `contact.manage`, `chat.respond`, `bookings.view` |   ✓   |        |    ✓    |
-| `settings.manage`, `audit.view`                   |   ✓   |        |         |
+| `admin.access`                                    |   x   |   x    |    x    |
+| `users.view`                                      |   x   |        |    x    |
+| `users.manage_roles`                              |   x   |        |         |
+| `billing.view`                                    |   x   |        |         |
+| `cms.edit`, `cms.publish`                         |   x   |   x    |         |
+| `contact.manage`, `chat.respond`, `bookings.view` |   x   |        |    x    |
+| `crm.manage`                                      |   x   |        |    x    |
+| `newsletter.manage`, `analytics.view`             |   x   |   x    |         |
+| `settings.manage`, `audit.view`                   |   x   |        |         |
 
-The mapping lives in `src/lib/permissions.ts`. Add a role by extending the `app_role` enum in a migration and adding it to that map.
+The mapping lives in `src/lib/permissions.ts`. Add a role by extending `AppRole` in `src/lib/server/db/schema.ts`, the check constraint in a migration, and that map.
 
 ## Security model
 
@@ -110,73 +89,58 @@ Each request passes through the following layers:
 1. **The `handle` hook** in `src/hooks.server.ts`:
    - sets security headers: `X-Frame-Options`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, HSTS and COOP
    - marks `/admin` and `/account` responses as `no-store`
+   - resolves the session cookie to a user (a random token whose SHA-256 is stored; 30 days, renewed past half-life)
    - redirects or 404s anyone who isn't staff away from `/admin`
 2. **Every admin load and every form action** calls `requirePermission(event, "<permission>")`. Layout loads don't run for form actions, so each action checks for itself.
-3. **The database:**
-   - Every new table has Row Level Security turned on, with no write policies for end users.
-   - Writes go through server code using the service role, and only after the permission check.
-   - Privileged SQL functions (`rate_limit_hit`, `admin_list_users`) can be run by `service_role` only.
-4. **Content Security Policy** is set in `svelte.config.js`:
-   - no inline or third-party scripts; SvelteKit adds nonces and hashes for its own scripts
+3. **The database:** all access goes through server code with one handle. Writes happen after the permission check; customer portal reads go through `src/lib/server/portal.ts`, where every function takes the signed-in user's id. Tests on a fresh database assert the scoping with two users.
+4. **Accounts:** passwords are hashed with scrypt (node:crypto, no native dependency). Sign-in, sign-up and reset requests are rate limited per address. Changing the email or password and deleting the account all require the current password; a password change signs out every other session. Verification and reset links are one-time tokens that expire in hours.
+5. **Content Security Policy** is set in `svelte.config.js`:
+   - no inline or third-party scripts; SvelteKit adds hashes for its own scripts
    - Calendly is allowed as a frame only
    - Stripe is allowed as a form target only
 
 Other protections:
 
 - **CMS content:** Markdown is rendered and sanitised once, at save time, with `sanitize-html` and a strict allow-list. `body_html` is never accepted from the client. Even a compromised editor account can't inject script.
-- **Chat:** Anonymous visitors are identified by a random 256-bit token in an `httpOnly`, `SameSite=Strict` cookie scoped to `/api/chat`. Only its SHA-256 hash is stored. The JSON endpoints check `Origin`, because SvelteKit's built-in CSRF check only covers form posts.
+- **Media:** uploads are typed by file content (PNG, JPEG, WebP, GIF, AVIF only, never SVG), named by the server and served from `MEDIA_DIR` by `/media/<name>`; the name pattern is checked on every read and write so a path can never leave the folder.
+- **Chat:** anonymous visitors are identified by a random 256-bit token in an `httpOnly`, `SameSite=Strict` cookie scoped to `/api/chat`. Only its SHA-256 hash is stored. The JSON endpoints check `Origin`, because SvelteKit's built-in CSRF check only covers form posts.
 - **Webhooks:** HMAC signatures are verified with a constant-time comparison. Calendly requests also get a 3-minute replay window. Payloads are size-capped and schema-validated with zod.
-- **Rate limits:** contact form, chat start, chat messages and chat polling are limited per IP or per conversation. Limits are stored in Postgres, so they hold across serverless instances. See `RATE_LIMITS` in `src/lib/server/security/rate_limit.ts`.
-- **Open redirects:** `?next=` targets are checked by `safeNextPath`, which also closes the starter's `/auth/callback?next=` open redirect.
-- **Audit log:** role changes, page publishes and deletes, settings changes, and contact and chat status changes are written to `audit_log` along with the actor and IP.
-- **Avatar storage:** the starter's "anyone can upload an avatar" policy is replaced. Users can now write only to their own folder.
+- **Rate limits:** contact form, chat, sign-in, sign-up and password reset are limited per IP, per account or per conversation. Windows live in the database, so limits hold across instances. See `RATE_LIMITS` in `src/lib/server/security/rate_limit.ts`.
+- **Open redirects:** `?next=` targets are checked by `safeNextPath`.
+- **Audit log:** role changes, page publishes and deletes, settings changes, media changes, and contact and chat status changes are written to `audit_log` with the actor and IP.
 
 ## Performance
 
-- Marketing pages stay prerendered.
+- Public pages are rendered on the server and anonymous visitors get `s-maxage=60, stale-while-revalidate=600`, so a CDN absorbs traffic spikes and admin edits appear within about a minute.
 - The chat widget ships as a ~1 KB launcher. The panel and its polling code load only when a visitor opens it. Polling backs off from 4s to 30s and stops while the tab is hidden.
 - The booking page embeds Calendly as a lazy iframe, so no Calendly script runs on your origin.
-- CMS pages serve stored HTML with no Markdown work per request. Anonymous visitors get `s-maxage=300, stale-while-revalidate` responses that a CDN can cache.
-- Settings are cached for 30 seconds per server instance.
-- Admin lists are paginated server-side and backed by indexes. Dashboard counts use `head: true` count queries run in parallel.
+- CMS pages serve stored HTML with no Markdown work per request.
+- Settings are cached for 30 seconds per server instance; SQLite runs in WAL mode so reads never wait on writes.
+- Admin lists are paginated server-side and backed by indexes.
 
 ## Testing
 
-| Command                          | What it checks                                                                                                                                                                                                                                                                             |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `npm run test_run`               | Unit tests: sanitiser XSS cases, webhook signatures, redirect safety and more                                                                                                                                                                                                              |
-| `npm run check` / `npm run lint` | Types and lint                                                                                                                                                                                                                                                                             |
-| `./supabase/tests/run.sh`        | Applies every migration to a throwaway Postgres and asserts the RLS rules: anon, users, editors and admins each see exactly what they should; privilege escalation fails; privileged functions are locked down. Needs `psql` and a local Postgres. Pass `DATABASE_URL` to point elsewhere. |
-
-## Adding a module
-
-1. Add a flag to `EnabledModules` in `src/config.ts`.
-2. Add tables in a new migration:
-   - enable RLS
-   - add read policies only
-   - write through the service role
-   - extend `supabase/tests/rls_test.sql`
-3. Add server code under `src/lib/server/<module>/` and keep pure logic unit-testable.
-4. Add admin pages under `src/routes/admin/<module>/`. Call `requireModule("<id>")` and `requirePermission(event, "<perm>")` in every load and action.
-5. Register the sidebar entry in `src/lib/modules.ts` and any new permission in `src/lib/permissions.ts`.
+| Command                                               | What it checks                                                                                                                                 |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run test_run`                                    | Behaviour tests on an in-memory SQLite: accounts and sessions, rate limits, portal scoping, chat counters, CRM capture, Stripe sync, sanitiser |
+| `TEST_DATABASE_URL=postgresql://... npm run test_run` | The same suite on a throwaway Postgres database (its public schema is dropped first)                                                           |
+| `npm run check` / `npm run lint`                      | Types and lint                                                                                                                                 |
 
 ## Content management (site owner guide)
 
 Everything visitors see is edited from the admin portal. No code changes or redeploys are needed.
 
-| Admin page                             | What it controls                                                                                                                     |
-| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| **Content → Homepage**                 | Hero, stats, features, steps, testimonials, FAQ, closing call to action. Each section can be shown or hidden.                        |
-| **Content → Pages**                    | Pages at `/<slug>` (About, Terms, Privacy, …)                                                                                        |
-| **Content → Blog**                     | Posts at `/blog/<slug>`: cover image, tags, author, scheduled publishing. RSS at `/blog/rss.xml`.                                    |
-| **Content → Media**                    | Image uploads (PNG, JPEG, WebP, GIF, AVIF, up to 5 MB; checked by file content). Every image field has a "Choose from Media" picker. |
-| **Configuration → Brand & navigation** | Site name, logo, colours (applied site-wide), header menu and button, footer columns, social links, announcement bar                 |
-| **Configuration → Pricing plans**      | Plans, prices, features and Stripe price/product IDs. Checkout only ever uses a configured plan's price.                             |
+| Admin page                              | What it controls                                                                                                                     |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| **Content -> Homepage**                 | Hero, stats, features, steps, testimonials, FAQ, closing call to action. Each section can be shown or hidden.                        |
+| **Content -> Pages**                    | Pages at `/<slug>` (About, Terms, Privacy, ...)                                                                                      |
+| **Content -> Blog**                     | Posts at `/blog/<slug>`: cover image, tags, author, scheduled publishing. RSS at `/blog/rss.xml`.                                    |
+| **Content -> Media**                    | Image uploads (PNG, JPEG, WebP, GIF, AVIF, up to 5 MB; checked by file content). Every image field has a "Choose from Media" picker. |
+| **Configuration -> Brand & navigation** | Site name, logo, colours (applied site-wide), header menu and button, footer columns, social links, announcement bar                 |
+| **Configuration -> Pricing plans**      | Plans, prices, features and Stripe price/product IDs. Checkout only ever uses a configured plan's price.                             |
 
 Editors can manage the homepage, pages, blog and media. Brand, pricing and settings are admin-only.
 
-Sample content (three posts and an About page) lives in `supabase/seed.sql`. The Supabase CLI loads it on `supabase db reset`. Regenerate it with `npx vite-node scripts/generate-seed.ts`.
-
-Public pages are rendered on the server. Anonymous visitors get `s-maxage=60, stale-while-revalidate=600`, so admin edits appear within about a minute behind a CDN.
+Sample content (three posts and an About page) is inserted by `npm run db:seed` when the tables are empty; the text lives in `src/lib/server/db/seed.ts`.
 
 If you self-host with `adapter-node`, set `BODY_SIZE_LIMIT=6M` so media uploads up to 5 MB are accepted.

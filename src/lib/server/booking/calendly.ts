@@ -1,4 +1,6 @@
 import { z } from "zod"
+import type { Db } from "../db"
+import { nowIso } from "../db/json"
 import { hmacSha256Hex, timingSafeEqual } from "../security/crypto"
 
 // Calendly signs webhooks with:  Calendly-Webhook-Signature: t=<unix>,v1=<hex>
@@ -59,7 +61,7 @@ export const calendlyWebhookSchema = z.object({
 
 export type CalendlyWebhook = z.output<typeof calendlyWebhookSchema>
 
-/** Map a verified webhook to a bookings row (minus user_id). */
+/** Map a verified webhook to a bookings row (minus id and user_id). */
 export const bookingFromWebhook = (hook: CalendlyWebhook) => {
   const p = hook.payload
   const ev = p.scheduled_event
@@ -79,8 +81,27 @@ export const bookingFromWebhook = (hook: CalendlyWebhook) => {
     cancel_reason: p.cancellation?.reason ?? null,
     cancel_url: p.cancel_url ?? null,
     reschedule_url: p.reschedule_url ?? null,
-    updated_at: new Date().toISOString(),
+    updated_at: nowIso(),
   }
+}
+
+export type BookingUpsert = ReturnType<typeof bookingFromWebhook>
+
+/**
+ * Records a booking, keyed by Calendly's invitee uri so a cancellation (or a retried webhook)
+ * updates the row created by invitee.created instead of adding another one.
+ */
+export const upsertBooking = async (
+  db: Db,
+  row: BookingUpsert,
+  userId: string | null,
+) => {
+  const values = { ...row, user_id: userId }
+  await db
+    .insertInto("bookings")
+    .values({ id: crypto.randomUUID(), ...values })
+    .onConflict((oc) => oc.column("external_id").doUpdateSet(values))
+    .execute()
 }
 
 /**

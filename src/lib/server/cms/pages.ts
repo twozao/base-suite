@@ -1,4 +1,7 @@
 import { z } from "zod"
+import type { Db } from "../db"
+import { containsText } from "../db/query"
+import type { CmsStatus } from "../db/schema"
 
 // Slugs that would collide with built-in routes.
 export const RESERVED_SLUGS = new Set([
@@ -31,7 +34,7 @@ export const slugify = (input: string): string =>
   input
     .toLowerCase()
     .normalize("NFKD")
-    .replace(/[̀-ͯ]/g, "")
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 100)
@@ -60,3 +63,40 @@ export const pageInputSchema = z.object({
 })
 
 export type PageInput = z.output<typeof pageInputSchema>
+
+/** Narrows the ?status= query value the admin listings accept. */
+export const isCmsStatus = (v: string): v is CmsStatus =>
+  v === "draft" || v === "published" || v === "archived"
+
+/** The published page at a slug, or undefined. Drafts and archived pages are never served. */
+export const publishedPage = (db: Db, slug: string) =>
+  db
+    .selectFrom("cms_pages")
+    .select([
+      "title",
+      "body_html",
+      "excerpt",
+      "seo_title",
+      "seo_description",
+      "updated_at",
+    ])
+    .where("slug", "=", slug)
+    .where("status", "=", "published")
+    .executeTakeFirst()
+
+/** Case-insensitive search over title, excerpt and markdown of published pages. */
+export const searchPages = (db: Db, q: string, limit = 10) =>
+  db
+    .selectFrom("cms_pages")
+    .select(["slug", "title", "excerpt"])
+    .where("status", "=", "published")
+    .where((eb) =>
+      eb.or([
+        containsText("cms_pages.title", q),
+        containsText("cms_pages.excerpt", q),
+        containsText("cms_pages.body_md", q),
+      ]),
+    )
+    .orderBy("title")
+    .limit(limit)
+    .execute()

@@ -6,17 +6,17 @@ import type { PageServerLoad } from "./$types"
 
 export const load: PageServerLoad = async ({ locals, url, setHeaders }) => {
   requireModule("booking")
-  const settings = await getSettings(locals.supabaseServiceRole)
+  const settings = await getSettings(locals.db)
   if (!settings.booking.enabled) error(404, "Not found")
 
   let name: string | null = null
   if (locals.user) {
-    const { data } = await locals.supabaseServiceRole
-      .from("profiles")
+    const profile = await locals.db
+      .selectFrom("profiles")
       .select("full_name")
-      .eq("id", locals.user.id)
-      .maybeSingle()
-    name = data?.full_name ?? null
+      .where("id", "=", locals.user.id)
+      .executeTakeFirst()
+    name = profile?.full_name ?? null
   }
   setHeaders({
     "cache-control": locals.user

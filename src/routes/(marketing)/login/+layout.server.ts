@@ -1,13 +1,8 @@
+import { redirect } from "@sveltejs/kit"
 import type { LayoutServerLoad } from "./$types"
 
-export const load: LayoutServerLoad = async ({
-  locals: { session },
-  cookies,
-  url,
-}) => {
-  return {
-    url: url.origin,
-    cookies: cookies.getAll(),
-    session,
-  }
+// Signed-in users have no business on the login pages.
+export const load: LayoutServerLoad = async ({ locals }) => {
+  if (locals.user) redirect(303, "/account")
+  return {}
 }

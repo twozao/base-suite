@@ -6,17 +6,28 @@ import {
 import type { PageServerLoad } from "./$types"
 import { getSettings } from "$lib/server/settings"
 import { plansForDisplay } from "$lib/server/pricing"
+import { stripeClient } from "$lib/server/billing/stripe"
 
-export const load: PageServerLoad = async ({
-  locals: { safeGetSession, supabaseServiceRole },
-}) => {
-  const { session, user } = await safeGetSession()
-  if (!session || !user?.id) {
+export const load: PageServerLoad = async ({ locals: { db, user } }) => {
+  if (!user) {
     redirect(303, "/login")
   }
 
+  // Without a Stripe key there is nothing to check out; show the plans and say so instead of failing.
+  if (!stripeClient()) {
+    const { pricing } = await getSettings(db)
+    return {
+      billingUnavailable: true,
+      isActiveCustomer: false,
+      hasEverHadSubscription: false,
+      currentPlanId: pricing.plans[0]?.id,
+      currentPlanName: "",
+      plans: plansForDisplay(pricing.plans, true),
+    }
+  }
+
   const { error: idError, customerId } = await getOrCreateCustomerId({
-    supabaseServiceRole,
+    db,
     user,
   })
   if (idError || !customerId) {
@@ -26,7 +37,7 @@ export const load: PageServerLoad = async ({
     })
   }
 
-  const { pricing } = await getSettings(supabaseServiceRole)
+  const { pricing } = await getSettings(db)
   const {
     primarySubscription,
     hasEverHadSubscription,
@@ -43,6 +54,7 @@ export const load: PageServerLoad = async ({
   }
 
   return {
+    billingUnavailable: false,
     isActiveCustomer: !!primarySubscription,
     hasEverHadSubscription,
     currentPlanId:

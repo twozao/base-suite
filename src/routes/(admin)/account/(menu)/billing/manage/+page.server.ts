@@ -3,17 +3,13 @@ import { stripeClient } from "$lib/server/billing/stripe"
 import { getOrCreateCustomerId } from "../../../subscription_helpers.server"
 import type { PageServerLoad } from "./$types"
 
-export const load: PageServerLoad = async ({
-  url,
-  locals: { safeGetSession, supabaseServiceRole },
-}) => {
-  const { session, user } = await safeGetSession()
-  if (!session) {
+export const load: PageServerLoad = async ({ url, locals: { db, user } }) => {
+  if (!user) {
     redirect(303, "/login")
   }
 
   const { error: idError, customerId } = await getOrCreateCustomerId({
-    supabaseServiceRole,
+    db,
     user,
   })
   if (idError || !customerId) {

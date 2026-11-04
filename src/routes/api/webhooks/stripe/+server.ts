@@ -35,7 +35,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   }
 
   try {
-    const result = await handleStripeEvent(locals.supabaseServiceRole, event)
+    const result = await handleStripeEvent(locals.db, event)
     return json({ received: true, ...result })
   } catch (e) {
     console.error("Stripe webhook processing failed", event.id, e)

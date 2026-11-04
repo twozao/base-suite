@@ -1,6 +1,7 @@
 import { z } from "zod"
 import { env } from "$env/dynamic/private"
 import type { RequestEvent } from "@sveltejs/kit"
+import { nowIso } from "./db/json"
 import { randomToken, sha256Hex } from "./security/crypto"
 import { sendTemplatedEmail } from "$lib/mailer"
 import { getSettings } from "./settings"
@@ -22,21 +23,20 @@ const emailConfigured = () =>
   !!(env.PRIVATE_FROM_EMAIL || env.PRIVATE_FROM_ADMIN_EMAIL)
 
 /**
- * Double opt-in subscribe. Always answers the same way whatever the current
- * state, so the form can't be used to discover who is subscribed.
- * Without an email provider configured, signups are confirmed immediately
- * (single opt-in) — set up Resend to get double opt-in.
+ * Double opt-in subscribe. Always answers the same way whatever the current state, so the form
+ * can't be used to discover who is subscribed. Without an email provider configured, signups are
+ * confirmed immediately (single opt-in); set up Resend to get double opt-in.
  */
 export const subscribe = async (
   event: RequestEvent,
   input: z.output<typeof subscribeSchema>,
 ): Promise<{ confirmed: boolean }> => {
-  const db = event.locals.supabaseServiceRole
-  const { data: existing } = await db
-    .from("newsletter_subscribers")
-    .select("id, status")
-    .eq("email", input.email)
-    .maybeSingle()
+  const db = event.locals.db
+  const existing = await db
+    .selectFrom("newsletter_subscribers")
+    .select(["id", "status"])
+    .where("email", "=", input.email)
+    .executeTakeFirst()
   if (existing?.status === "confirmed") return { confirmed: !emailConfigured() }
 
   const confirmToken = randomToken()
@@ -49,13 +49,21 @@ export const subscribe = async (
     status: doubleOptIn ? ("pending" as const) : ("confirmed" as const),
     confirm_token_hash: doubleOptIn ? await sha256Hex(confirmToken) : null,
     unsubscribe_token_hash: await sha256Hex(unsubscribeToken),
-    confirmed_at: doubleOptIn ? null : new Date().toISOString(),
+    confirmed_at: doubleOptIn ? null : nowIso(),
     unsubscribed_at: null,
   }
-  const { error } = existing
-    ? await db.from("newsletter_subscribers").update(row).eq("id", existing.id)
-    : await db.from("newsletter_subscribers").insert(row)
-  if (error) throw new Error(`newsletter subscribe failed: ${error.message}`)
+  if (existing) {
+    await db
+      .updateTable("newsletter_subscribers")
+      .set(row)
+      .where("id", "=", existing.id)
+      .execute()
+  } else {
+    await db
+      .insertInto("newsletter_subscribers")
+      .values({ id: crypto.randomUUID(), ...row })
+      .execute()
+  }
 
   if (doubleOptIn) {
     const s = await getSettings(db)
@@ -85,18 +93,18 @@ export const subscribe = async (
 
 export const confirm = async (event: RequestEvent, token: string) => {
   if (!token || token.length > 100) return false
-  const db = event.locals.supabaseServiceRole
-  const { data } = await db
-    .from("newsletter_subscribers")
-    .update({
+  const db = event.locals.db
+  const data = await db
+    .updateTable("newsletter_subscribers")
+    .set({
       status: "confirmed",
-      confirmed_at: new Date().toISOString(),
+      confirmed_at: nowIso(),
       confirm_token_hash: null,
     })
-    .eq("confirm_token_hash", await sha256Hex(token))
-    .eq("status", "pending")
-    .select("email, name")
-    .maybeSingle()
+    .where("confirm_token_hash", "=", await sha256Hex(token))
+    .where("status", "=", "pending")
+    .returning(["email", "name"])
+    .executeTakeFirst()
   if (!data) return false
   await captureLead(db, {
     email: data.email,
@@ -110,14 +118,11 @@ export const confirm = async (event: RequestEvent, token: string) => {
 
 export const unsubscribe = async (event: RequestEvent, token: string) => {
   if (!token || token.length > 100) return false
-  const { data } = await event.locals.supabaseServiceRole
-    .from("newsletter_subscribers")
-    .update({
-      status: "unsubscribed",
-      unsubscribed_at: new Date().toISOString(),
-    })
-    .eq("unsubscribe_token_hash", await sha256Hex(token))
-    .select("id")
-    .maybeSingle()
+  const data = await event.locals.db
+    .updateTable("newsletter_subscribers")
+    .set({ status: "unsubscribed", unsubscribed_at: nowIso() })
+    .where("unsubscribe_token_hash", "=", await sha256Hex(token))
+    .returning("id")
+    .executeTakeFirst()
   return !!data
 }

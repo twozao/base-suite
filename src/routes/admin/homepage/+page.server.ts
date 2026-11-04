@@ -6,7 +6,7 @@ import type { Actions, PageServerLoad } from "./$types"
 
 export const load: PageServerLoad = async (event) => {
   await requirePermission(event, "cms.edit")
-  const s = await getSettings(event.locals.supabaseServiceRole)
+  const s = await getSettings(event.locals.db)
   return { home: s.home, icons: [...ICONS] }
 }
 

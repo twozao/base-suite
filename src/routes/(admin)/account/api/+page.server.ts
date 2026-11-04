@@ -3,14 +3,32 @@ import { z } from "zod"
 import { env } from "$env/dynamic/private"
 import { sendAdminEmail, sendUserEmail } from "$lib/mailer"
 import { getSettings } from "$lib/server/settings"
+import { nowIso } from "$lib/server/db/json"
+import { PASSWORD_MAX, PASSWORD_MIN } from "$lib/server/auth/password"
+import {
+  clearSessionCookie,
+  invalidateUserSessions,
+} from "$lib/server/auth/session"
+import { sendVerificationEmail } from "$lib/server/auth/flows"
+import {
+  checkPassword,
+  deleteUser,
+  updateEmail,
+  updatePassword,
+} from "$lib/server/auth/users"
 import type { Actions, RequestEvent } from "./$types"
 
 // Every form is parsed once here, at the boundary. The result shape (errorMessage, errorFields and the
 // echoed text values) is what settings_module.svelte and create_profile/+page.svelte render.
 const PROFILE_FIELD_MAX = 50
-const PASSWORD_MIN = 6
-const PASSWORD_MAX = 72
-const RECOVERY_WINDOW_MS = 15 * 60 * 1000
+
+const currentPassword = z
+  .string()
+  .min(
+    1,
+    "Enter your current password. If you forgot it, sign out and use 'Forgot password'.",
+  )
+  .max(PASSWORD_MAX)
 
 const emailForm = z.object({
   email: z
@@ -19,6 +37,7 @@ const emailForm = z.object({
     .min(1, "An email address is required")
     .max(320, "That email address is too long")
     .email("A valid email address is required"),
+  currentPassword,
 })
 
 const passwordForm = z
@@ -35,22 +54,14 @@ const passwordForm = z
         `The new password can be at most ${PASSWORD_MAX} characters long`,
       ),
     newPassword2: z.string().min(1, "You must type the new password twice"),
-    currentPassword: z.string().max(PASSWORD_MAX),
+    currentPassword,
   })
   .refine((p) => p.newPassword1 === p.newPassword2, {
     message: "The passwords don't match",
     path: ["newPassword2"],
   })
 
-const deleteForm = z.object({
-  currentPassword: z
-    .string()
-    .min(
-      1,
-      "You must provide your current password to delete your account. If you forgot it, sign out then use 'forgot password' on the sign in page.",
-    )
-    .max(PASSWORD_MAX),
-})
+const deleteForm = z.object({ currentPassword })
 
 const profileText = (label: string, requiredHint: string) =>
   z
@@ -88,7 +99,9 @@ const parseForm = async <S extends z.ZodTypeAny>(
     return { ok: true as const, data: parsed.data as z.output<S> }
   const values = echo
     ? Object.fromEntries(
-        Object.entries(raw).filter(([, v]) => typeof v === "string"),
+        Object.entries(raw).filter(
+          ([k, v]) => typeof v === "string" && !/password/i.test(k),
+        ),
       )
     : {}
   return {
@@ -108,46 +121,54 @@ const requireUser = (locals: RequestEvent["locals"]) => {
   return locals.user
 }
 
-const UNKNOWN_ERROR = "Unknown error. If this persists please contact us."
+const wrongPassword = () =>
+  fail(400, {
+    errorMessage: "Current password is incorrect",
+    errorFields: ["currentPassword"],
+  })
 
 export const actions: Actions = {
   toggleEmailSubscription: async ({ locals }) => {
     const user = requireUser(locals)
-    const { data: currentProfile } = await locals.supabase
-      .from("profiles")
+    const current = await locals.db
+      .selectFrom("profiles")
       .select("unsubscribed")
-      .eq("id", user.id)
-      .single()
-    const unsubscribed = !currentProfile?.unsubscribed
-    const { error } = await locals.supabase
-      .from("profiles")
-      .update({ unsubscribed })
-      .eq("id", user.id)
-    if (error) {
-      console.error("Error updating subscription status", error)
-      return fail(500, { message: "Failed to update subscription status" })
-    }
+      .where("id", "=", user.id)
+      .executeTakeFirst()
+    const unsubscribed = current?.unsubscribed !== 1
+    await locals.db
+      .updateTable("profiles")
+      .set({ unsubscribed: unsubscribed ? 1 : 0 })
+      .where("id", "=", user.id)
+      .execute()
     return { unsubscribed }
   },
 
-  updateEmail: async ({ request, locals }) => {
-    requireUser(locals)
-    const form = await parseForm(request, emailForm, ["email"])
+  updateEmail: async (event) => {
+    const { request, locals } = event
+    const user = requireUser(locals)
+    const form = await parseForm(request, emailForm, [
+      "email",
+      "currentPassword",
+    ])
     if (!form.ok) return form.failure
     const { email } = form.data
-    // Supabase only switches the address once the user confirms it (Secure email change).
-    const { error } = await locals.supabase.auth.updateUser({ email })
-    if (error) {
-      console.error("Error updating email", error)
-      return fail(500, { errorMessage: UNKNOWN_ERROR, email })
+    if (!(await checkPassword(locals.db, user.id, form.data.currentPassword)))
+      return wrongPassword()
+    const result = await updateEmail(locals.db, user.id, email)
+    if (!result.ok) {
+      return fail(400, {
+        errorMessage: "That email address is already in use",
+        errorFields: ["email"],
+        email,
+      })
     }
+    await sendVerificationEmail(event, user.id, email.trim().toLowerCase())
     return { email }
   },
 
   updatePassword: async ({ request, locals }) => {
-    // amr is only on safeGetSession: it tells a password-recovery session from a normal one.
-    const { user, amr } = await locals.safeGetSession()
-    if (!user) redirect(303, "/login")
+    const user = requireUser(locals)
     const form = await parseForm(
       request,
       passwordForm,
@@ -155,45 +176,15 @@ export const actions: Actions = {
       false,
     )
     if (!form.ok) return form.failure
-    const { newPassword1, currentPassword } = form.data
-
-    const recovery = amr?.find((x) => x.method === "recovery")
-    const isRecoverySession = !!recovery && !currentPassword
-    if (isRecoverySession) {
-      if (Date.now() - recovery.timestamp * 1000 > RECOVERY_WINDOW_MS) {
-        return fail(400, {
-          errorMessage:
-            'Recovery code expired. Please log out, then use "Forgot Password" on the sign in page to reset your password. Codes are valid for 15 minutes.',
-          errorFields: [],
-        })
-      }
-    } else {
-      if (!currentPassword) {
-        return fail(400, {
-          errorMessage:
-            "You must include your current password. If you forgot it, sign out then use 'forgot password' on the sign in page.",
-          errorFields: ["currentPassword"],
-        })
-      }
-      // Proves the caller knows the current password. Supabase can enforce this too (secure password change).
-      const { error } = await locals.supabase.auth.signInWithPassword({
-        email: user.email ?? "",
-        password: currentPassword,
-      })
-      if (error) redirect(303, "/login/current_password_error")
-    }
-
-    const { error } = await locals.supabase.auth.updateUser({
-      password: newPassword1,
-    })
-    if (error) {
-      console.error("Error updating password", error)
-      return fail(500, { errorMessage: UNKNOWN_ERROR })
-    }
+    if (!(await checkPassword(locals.db, user.id, form.data.currentPassword)))
+      return wrongPassword()
+    await updatePassword(locals.db, user.id, form.data.newPassword1)
+    // Other devices are signed out; this session stays.
+    await invalidateUserSessions(locals.db, user.id, locals.session?.id)
     return {}
   },
 
-  deleteAccount: async ({ request, locals }) => {
+  deleteAccount: async ({ request, locals, cookies }) => {
     const user = requireUser(locals)
     const form = await parseForm(
       request,
@@ -202,21 +193,10 @@ export const actions: Actions = {
       false,
     )
     if (!form.ok) return form.failure
-    const { error: pwError } = await locals.supabase.auth.signInWithPassword({
-      email: user.email ?? "",
-      password: form.data.currentPassword,
-    })
-    if (pwError) redirect(303, "/login/current_password_error")
-
-    const { error } = await locals.supabaseServiceRole.auth.admin.deleteUser(
-      user.id,
-      true,
-    )
-    if (error) {
-      console.error("Error deleting user", error)
-      return fail(500, { errorMessage: UNKNOWN_ERROR })
-    }
-    await locals.supabase.auth.signOut()
+    if (!(await checkPassword(locals.db, user.id, form.data.currentPassword)))
+      return wrongPassword()
+    await deleteUser(locals.db, user.id)
+    clearSessionCookie(cookies)
     redirect(303, "/")
   },
 
@@ -230,46 +210,33 @@ export const actions: Actions = {
     if (!form.ok) return form.failure
     const { fullName, companyName, website } = form.data
 
-    // The profile row is created by a trigger at sign-up with updated_at null; the first save fills it in.
-    const { data: priorProfile, error: priorProfileError } =
-      await locals.supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .single()
-
-    const { error } = await locals.supabase
-      .from("profiles")
-      .upsert({
-        id: user.id,
-        full_name: fullName,
-        company_name: companyName,
-        website,
-        updated_at: new Date(),
-        unsubscribed: priorProfile?.unsubscribed ?? false,
-      })
-      .select()
-    if (error) {
-      console.error("Error updating profile", error)
-      return fail(500, {
-        errorMessage: UNKNOWN_ERROR,
-        fullName,
-        companyName,
-        website,
-      })
+    // The profile row is created at sign-up with updated_at null; the first save fills it in.
+    const prior = await locals.db
+      .selectFrom("profiles")
+      .select("updated_at")
+      .where("id", "=", user.id)
+      .executeTakeFirst()
+    const values = {
+      full_name: fullName,
+      company_name: companyName,
+      website,
+      updated_at: nowIso(),
     }
+    await locals.db
+      .insertInto("profiles")
+      .values({ id: user.id, ...values })
+      .onConflict((oc) => oc.column("id").doUpdateSet(values))
+      .execute()
 
-    const newProfile =
-      priorProfile?.updated_at === null && priorProfileError === null
-    if (newProfile) {
+    if (!prior || prior.updated_at === null) {
       await sendAdminEmail({
         subject: "Profile Created",
         body: `Profile created by ${user.email}\nFull name: ${fullName}\nCompany name: ${companyName}\nWebsite: ${website}`,
       })
-      const { brand } = await getSettings(locals.supabaseServiceRole)
+      const { brand } = await getSettings(locals.db)
       await sendUserEmail({
-        db: locals.supabaseServiceRole,
-        user,
+        db: locals.db,
+        userId: user.id,
         subject: "Welcome!",
         from_email:
           env.PRIVATE_FROM_ADMIN_EMAIL || env.PRIVATE_ADMIN_EMAIL || "",

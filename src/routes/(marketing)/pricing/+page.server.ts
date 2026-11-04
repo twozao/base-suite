@@ -6,7 +6,7 @@ import type { PageServerLoad } from "./$types"
 
 export const load: PageServerLoad = async ({ locals }) => {
   requireModule("subscriptions")
-  const s = await getSettings(locals.supabaseServiceRole)
+  const s = await getSettings(locals.db)
   if (!s.pricing.plans.length) error(404, "Not found")
   return {
     pricing: {

@@ -1,1 +1,50 @@
-export const ssr = false
+import { fail, redirect } from "@sveltejs/kit"
+import { z } from "zod"
+import { safeNextPath } from "$lib/safe_redirect"
+import { createUser, markEmailVerified } from "$lib/server/auth/users"
+import {
+  mailConfigured,
+  sendVerificationEmail,
+  startSession,
+} from "$lib/server/auth/flows"
+import { clientIp } from "$lib/server/security/request"
+import { rateLimit, RATE_LIMITS } from "$lib/server/security/rate_limit"
+import { emailField, newPasswordField, parseAuthForm } from "../auth_forms"
+import type { Actions } from "./$types"
+
+const schema = z.object({ email: emailField, password: newPasswordField })
+
+export const actions: Actions = {
+  default: async (event) => {
+    const form = await parseAuthForm(
+      event.request,
+      schema,
+      ["email", "password"],
+      ["email"],
+    )
+    if (!form.ok) return form.failure
+    const { email, password } = form.data
+    const db = event.locals.db
+    if (
+      !(await rateLimit(db, `signup:${clientIp(event)}`, RATE_LIMITS.signUp))
+    ) {
+      return fail(429, {
+        error: "Too many sign-ups from this address. Try again later.",
+        email,
+      })
+    }
+    const result = await createUser(db, { email, password })
+    if (!result.ok) {
+      return fail(400, {
+        error: "An account with that email already exists. Sign in instead.",
+        email,
+      })
+    }
+    // Without a mail provider there is no way to verify, so the address is taken as given.
+    if (mailConfigured())
+      await sendVerificationEmail(event, result.user.id, result.user.email)
+    else await markEmailVerified(db, result.user.id)
+    await startSession(event, result.user.id)
+    redirect(303, safeNextPath(event.url.searchParams.get("next")))
+  },
+}

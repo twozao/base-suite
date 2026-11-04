@@ -1,6 +1,7 @@
 import { isModuleEnabled } from "$lib/modules"
 import { isSameOrigin } from "$lib/server/security/request"
 import { countablePath, isBot, referrerHost } from "$lib/server/analytics"
+import { recordPageView } from "./record.server"
 import type { RequestHandler } from "./$types"
 
 const NO_CONTENT = () => new Response(null, { status: 204 })
@@ -25,13 +26,14 @@ export const POST: RequestHandler = async (event) => {
   }
   const path = countablePath(body.p)
   if (!path) return NO_CONTENT()
-  const { error } = await event.locals.supabaseServiceRole.rpc(
-    "analytics_hit",
-    {
-      p_path: path,
-      p_host: referrerHost(body.r, event.url.host),
-    },
-  )
-  if (error) console.error("analytics_hit failed", error.message)
+  try {
+    await recordPageView(
+      event.locals.db,
+      path,
+      referrerHost(body.r, event.url.host),
+    )
+  } catch (e) {
+    console.error("page view count failed", e instanceof Error ? e.message : e)
+  }
   return NO_CONTENT()
 }

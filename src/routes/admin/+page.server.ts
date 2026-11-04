@@ -1,17 +1,19 @@
 import { requirePermission } from "$lib/server/auth/staff"
+import { countUsers } from "$lib/server/auth/directory"
+import { nowIso } from "$lib/server/db/json"
 import { isModuleEnabled } from "$lib/modules"
 import type { PageServerLoad } from "./$types"
 
 export const load: PageServerLoad = async (event) => {
   const staff = await requirePermission(event, "admin.access")
-  const db = event.locals.supabaseServiceRole
+  const db = event.locals.db
   const p = staff.permissions
   const can = (
     perm: Parameters<typeof p.has>[0],
     mod?: Parameters<typeof isModuleEnabled>[0],
   ) => p.has(perm) && (!mod || isModuleEnabled(mod))
-  const head = { count: "exact" as const, head: true }
-  const nowIso = new Date().toISOString()
+  const count = db.fn.countAll<number>().as("n")
+  const now = nowIso()
 
   const [
     users,
@@ -24,54 +26,89 @@ export const load: PageServerLoad = async (event) => {
     recentContacts,
     upcomingList,
   ] = await Promise.all([
-    can("users.view") ? db.rpc("admin_list_users", { p_limit: 1 }) : null,
+    can("users.view") ? countUsers(db) : null,
     can("billing.view", "subscriptions")
       ? db
-          .from("subscriptions")
-          .select("id", head)
-          .in("status", ["active", "trialing"])
+          .selectFrom("subscriptions")
+          .select(count)
+          .where("status", "in", ["active", "trialing"])
+          .executeTakeFirstOrThrow()
       : null,
     can("contact.manage", "contact")
-      ? db.from("contact_requests").select("id", head).eq("status", "new")
+      ? db
+          .selectFrom("contact_requests")
+          .select(count)
+          .where("status", "=", "new")
+          .executeTakeFirstOrThrow()
       : null,
     can("chat.respond", "chat")
-      ? db.from("chat_conversations").select("id", head).neq("status", "closed")
+      ? db
+          .selectFrom("chat_conversations")
+          .select(count)
+          .where("status", "!=", "closed")
+          .executeTakeFirstOrThrow()
       : null,
     can("bookings.view", "booking")
       ? db
-          .from("bookings")
-          .select("id", head)
-          .eq("status", "scheduled")
-          .gte("start_time", nowIso)
+          .selectFrom("bookings")
+          .select(count)
+          .where("status", "=", "scheduled")
+          .where("start_time", ">=", now)
+          .executeTakeFirstOrThrow()
       : null,
     can("cms.edit", "cms")
-      ? db.from("cms_pages").select("id", head).eq("status", "published")
+      ? db
+          .selectFrom("cms_pages")
+          .select(count)
+          .where("status", "=", "published")
+          .executeTakeFirstOrThrow()
       : null,
     can("chat.respond", "chat")
       ? db
-          .from("chat_conversations")
-          .select(
-            "id, visitor_name, visitor_email, status, unread_by_staff, last_message_at",
-          )
-          .neq("status", "closed")
-          .order("last_message_at", { ascending: false })
+          .selectFrom("chat_conversations")
+          .select([
+            "id",
+            "visitor_name",
+            "visitor_email",
+            "status",
+            "unread_by_staff",
+            "last_message_at",
+          ])
+          .where("status", "!=", "closed")
+          .orderBy("last_message_at", "desc")
           .limit(5)
+          .execute()
       : null,
     can("contact.manage", "contact")
       ? db
-          .from("contact_requests")
-          .select("id, first_name, last_name, email, status, created_at")
-          .order("created_at", { ascending: false })
+          .selectFrom("contact_requests")
+          .select([
+            "id",
+            "first_name",
+            "last_name",
+            "email",
+            "status",
+            "created_at",
+          ])
+          .orderBy("created_at", "desc")
           .limit(5)
+          .execute()
       : null,
     can("bookings.view", "booking")
       ? db
-          .from("bookings")
-          .select("id, invitee_name, invitee_email, event_name, start_time")
-          .eq("status", "scheduled")
-          .gte("start_time", nowIso)
-          .order("start_time", { ascending: true })
+          .selectFrom("bookings")
+          .select([
+            "id",
+            "invitee_name",
+            "invitee_email",
+            "event_name",
+            "start_time",
+          ])
+          .where("status", "=", "scheduled")
+          .where("start_time", ">=", now)
+          .orderBy("start_time", "asc")
           .limit(5)
+          .execute()
       : null,
   ])
 
@@ -81,74 +118,79 @@ export const load: PageServerLoad = async (event) => {
   const [views, leads, subscribers] = await Promise.all([
     can("analytics.view", "analytics")
       ? db
-          .from("analytics_daily")
-          .select("views")
-          .gte("day", weekAgoDay)
-          .limit(20_000)
+          .selectFrom("analytics_daily")
+          .select(db.fn.sum<number | null>("views").as("n"))
+          .where("day", ">=", weekAgoDay)
+          .executeTakeFirstOrThrow()
       : null,
     can("crm.manage", "crm")
-      ? db.from("crm_contacts").select("id", head).eq("status", "lead")
+      ? db
+          .selectFrom("crm_contacts")
+          .select(count)
+          .where("status", "=", "lead")
+          .executeTakeFirstOrThrow()
       : null,
     can("newsletter.manage", "newsletter")
       ? db
-          .from("newsletter_subscribers")
-          .select("id", head)
-          .eq("status", "confirmed")
+          .selectFrom("newsletter_subscribers")
+          .select(count)
+          .where("status", "=", "confirmed")
+          .executeTakeFirstOrThrow()
       : null,
   ])
 
   const stats = [
     views && {
       label: "Page views (7 days)",
-      value: (views.data ?? []).reduce((s, r) => s + r.views, 0),
+      value: Number(views.n ?? 0),
       href: "/admin/analytics",
     },
     leads && {
       label: "Open leads",
-      value: leads.count ?? 0,
+      value: Number(leads.n),
       href: "/admin/crm",
     },
     subscribers && {
       label: "Newsletter subscribers",
-      value: subscribers.count ?? 0,
+      value: Number(subscribers.n),
       href: "/admin/newsletter",
     },
-    users && {
+    users !== null && {
       label: "Users",
-      value: users.data?.[0]?.total_count ?? 0,
+      value: users,
       href: "/admin/users",
     },
     activeSubs && {
       label: "Active subscriptions",
-      value: activeSubs.count ?? 0,
+      value: Number(activeSubs.n),
       href: "/admin/subscriptions",
     },
     newContacts && {
       label: "New contact requests",
-      value: newContacts.count ?? 0,
+      value: Number(newContacts.n),
       href: "/admin/contact",
     },
     openChats && {
       label: "Open chats",
-      value: openChats.count ?? 0,
+      value: Number(openChats.n),
       href: "/admin/support",
     },
     upcoming && {
       label: "Upcoming bookings",
-      value: upcoming.count ?? 0,
+      value: Number(upcoming.n),
       href: "/admin/bookings",
     },
     pages && {
       label: "Published pages",
-      value: pages.count ?? 0,
+      value: Number(pages.n),
       href: "/admin/pages",
     },
   ].filter(Boolean) as { label: string; value: number; href: string }[]
 
   return {
     stats,
-    recentChats: recentChats?.data ?? null,
-    recentContacts: recentContacts?.data ?? null,
-    upcomingBookings: upcomingList?.data ?? null,
+    recentChats,
+    recentContacts,
+    upcomingBookings: upcomingList,
   }
 }
