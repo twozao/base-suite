@@ -1,47 +1,26 @@
 import adapter from "@sveltejs/adapter-auto"
 import { vitePreprocess } from "@sveltejs/vite-plugin-svelte"
-import { loadEnv } from "vite"
-
-// Content Security Policy. SvelteKit adds hashes/nonces for its own inline scripts, so no 'unsafe-inline' for scripts.
-// .env is not in process.env when this file loads, so read it the way Vite does (shell vars still win).
-const env = loadEnv(
-  process.env.NODE_ENV || "development",
-  process.cwd(),
-  "PUBLIC_",
-)
-const supabaseUrl = env.PUBLIC_SUPABASE_URL || ""
-const supabaseOrigins = supabaseUrl.startsWith("http")
-  ? [
-      new URL(supabaseUrl).origin,
-      new URL(supabaseUrl).origin.replace(/^http/, "ws"),
-    ]
-  : []
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
   kit: {
-    // adapter-auto only supports some environments, see https://kit.svelte.dev/docs/adapter-auto for a list.
-    // If your environment is not supported or you settled on a specific environment, switch out the adapter.
-    // See https://kit.svelte.dev/docs/adapters for more information about adapters.
+    // adapter-auto picks Node, Vercel, Netlify or Cloudflare from the environment. SQLite needs a
+    // persistent disk, so on serverless hosts set DATABASE_URL to Postgres. See README.
     adapter: adapter(),
-    // allow up to 150kb of style to be inlined with the HTML
-    // Faster FCP (First Contentful Paint) by reducing the number of requests
+    // allow up to 150kb of style to be inlined with the HTML for a faster first paint
     inlineStyleThreshold: 150000,
+    // Content Security Policy. SvelteKit adds hashes for its own inline scripts, so no 'unsafe-inline' for scripts.
     csp: {
       mode: "auto",
       directives: {
         "default-src": ["self"],
         "script-src": ["self"],
-        // Svelte transitions and the Supabase auth UI inject inline styles
+        // Svelte transitions inject inline styles
         "style-src": ["self", "unsafe-inline"],
-        "img-src": ["self", "data:", "https:", ...supabaseOrigins],
+        // Editors paste image URLs from anywhere, so any https host is allowed for images only
+        "img-src": ["self", "data:", "https:"],
         "font-src": ["self", "data:"],
-        "connect-src": [
-          "self",
-          "https://*.supabase.co",
-          "wss://*.supabase.co",
-          ...supabaseOrigins,
-        ],
+        "connect-src": ["self"],
         "frame-src": ["https://calendly.com", "https://*.calendly.com"],
         "form-action": [
           "self",

@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest"
+import { createTestDb } from "../db/test_db"
 import { hmacSha256Hex } from "../security/crypto"
 import {
   bookingFromWebhook,
   calendlyEmbedUrl,
   calendlyWebhookSchema,
+  upsertBooking,
   verifyCalendlySignature,
 } from "./calendly"
 
@@ -76,6 +78,43 @@ describe("bookingFromWebhook", () => {
     expect(row.status).toBe("canceled")
     expect(row.invitee_email).toBe("ann@example.com")
     expect(row.cancel_reason).toBe("conflict")
+  })
+})
+
+describe("upsertBooking", () => {
+  const payload = {
+    uri: "https://api.calendly.com/scheduled_events/E/invitees/I",
+    email: "ann@example.com",
+    name: "Ann",
+    scheduled_event: {
+      name: "Intro call",
+      start_time: "2026-11-10T10:00:00.000000Z",
+    },
+  }
+
+  it("creates the row once and a cancellation updates it in place", async () => {
+    const db = await createTestDb()
+    const created = bookingFromWebhook(
+      calendlyWebhookSchema.parse({ event: "invitee.created", payload }),
+    )
+    await upsertBooking(db, created, null)
+    await upsertBooking(db, created, null)
+    const canceled = bookingFromWebhook(
+      calendlyWebhookSchema.parse({
+        event: "invitee.canceled",
+        payload: { ...payload, cancellation: { reason: "conflict" } },
+      }),
+    )
+    await upsertBooking(db, canceled, null)
+    const rows = await db.selectFrom("bookings").selectAll().execute()
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({
+      external_id: payload.uri,
+      event_name: "Intro call",
+      status: "canceled",
+      cancel_reason: "conflict",
+      user_id: null,
+    })
   })
 })
 

@@ -1,4 +1,10 @@
-import { POST_CARD_FIELDS } from "$lib/server/posts"
+import { nowIso } from "$lib/server/db/json"
+import {
+  TAG_RE,
+  countPublishedPosts,
+  listPostCards,
+  publishedTags,
+} from "$lib/server/posts"
 import type { PageServerLoad } from "./$types"
 
 const PAGE_SIZE = 9
@@ -11,32 +17,32 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   const raw = Number(url.searchParams.get("page"))
   const page = Number.isInteger(raw) && raw > 0 && raw < 1000 ? raw : 1
   const from = (page - 1) * PAGE_SIZE
+  const db = locals.db
+  const now = nowIso()
 
-  let query = locals.supabase
-    .from("posts")
-    .select(POST_CARD_FIELDS, { count: "exact" })
-    .eq("status", "published")
-    .lte("published_at", new Date().toISOString())
-    .order("published_at", { ascending: false })
-    .range(from, from + PAGE_SIZE - 1)
-  if (tag) query = query.contains("tags", [tag])
+  // A tag that could never have been saved matches nothing; skip the query.
+  if (tag && !TAG_RE.test(tag)) {
+    return {
+      posts: [],
+      total: 0,
+      page,
+      pages: 1,
+      tag,
+      tags: await publishedTags(db, now),
+    }
+  }
 
-  const [{ data: posts, count }, { data: tagRows }] = await Promise.all([
-    query,
-    locals.supabase
-      .from("posts")
-      .select("tags")
-      .eq("status", "published")
-      .lte("published_at", new Date().toISOString())
-      .limit(500),
+  const [posts, total, tags] = await Promise.all([
+    listPostCards(db, { tag, limit: PAGE_SIZE, offset: from, now }),
+    countPublishedPosts(db, { tag, now }),
+    publishedTags(db, now),
   ])
-  const tags = [...new Set((tagRows ?? []).flatMap((r) => r.tags))].sort()
 
   return {
-    posts: posts ?? [],
-    total: count ?? 0,
+    posts,
+    total,
     page,
-    pages: Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE)),
+    pages: Math.max(1, Math.ceil(total / PAGE_SIZE)),
     tag,
     tags,
   }

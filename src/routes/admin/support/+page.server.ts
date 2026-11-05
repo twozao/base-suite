@@ -1,6 +1,6 @@
-import { error } from "@sveltejs/kit"
 import { requireModule, requirePermission } from "$lib/server/auth/staff"
-import { ilikeTerm, pageParams, searchParam } from "$lib/server/pagination"
+import { containsText } from "$lib/server/db/query"
+import { pageParams, searchParam } from "$lib/server/pagination"
 import type { PageServerLoad } from "./$types"
 
 export const load: PageServerLoad = async (event) => {
@@ -9,31 +9,48 @@ export const load: PageServerLoad = async (event) => {
   event.depends("admin:support")
   const filter = event.url.searchParams.get("filter") ?? "open"
   const q = searchParam(event.url)
-  const { page, size, from, to } = pageParams(event.url)
+  const { page, size, from } = pageParams(event.url)
+  const db = event.locals.db
 
-  let query = event.locals.supabaseServiceRole
-    .from("chat_conversations")
-    .select(
-      "id, user_id, visitor_name, visitor_email, page_url, status, assigned_to, unread_by_staff, last_message_at",
-      { count: "exact" },
-    )
-    .order("last_message_at", { ascending: false })
-    .range(from, to)
-  if (filter === "open") query = query.neq("status", "closed")
+  let base = db.selectFrom("chat_conversations")
+  if (filter === "open") base = base.where("status", "!=", "closed")
   else if (filter === "mine")
-    query = query.eq("assigned_to", staff.userId).neq("status", "closed")
+    base = base
+      .where("assigned_to", "=", staff.userId)
+      .where("status", "!=", "closed")
   else if (filter === "unassigned")
-    query = query.is("assigned_to", null).neq("status", "closed")
-  else if (filter === "closed") query = query.eq("status", "closed")
+    base = base.where("assigned_to", "is", null).where("status", "!=", "closed")
+  else if (filter === "closed") base = base.where("status", "=", "closed")
   if (q) {
-    const t = ilikeTerm(q)
-    query = query.or(`visitor_email.ilike.${t},visitor_name.ilike.${t}`)
+    base = base.where((eb) =>
+      eb.or([
+        containsText("visitor_email", q),
+        containsText("visitor_name", q),
+      ]),
+    )
   }
-  const { data, count, error: e } = await query
-  if (e) error(500, "Could not load conversations")
+  const [{ n }, rows] = await Promise.all([
+    base.select(db.fn.countAll<number>().as("n")).executeTakeFirstOrThrow(),
+    base
+      .select([
+        "id",
+        "user_id",
+        "visitor_name",
+        "visitor_email",
+        "page_url",
+        "status",
+        "assigned_to",
+        "unread_by_staff",
+        "last_message_at",
+      ])
+      .orderBy("last_message_at", "desc")
+      .limit(size)
+      .offset(from)
+      .execute(),
+  ])
   return {
-    rows: data ?? [],
-    total: count ?? 0,
+    rows,
+    total: Number(n),
     page,
     size,
     filter,

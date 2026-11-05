@@ -1,6 +1,7 @@
 import type { RequestHandler } from "@sveltejs/kit"
 import * as sitemap from "super-sitemap"
 import { isModuleEnabled } from "$lib/modules"
+import { publishedPosts } from "$lib/server/posts"
 
 // Rendered on request (not prerendered) so published CMS pages appear without
 // a rebuild. Cached at the CDN for an hour.
@@ -9,20 +10,16 @@ export const GET: RequestHandler = async ({ locals, setHeaders, url }) => {
   let postSlugs: string[] = []
   if (isModuleEnabled("cms")) {
     const [pages, posts] = await Promise.all([
-      locals.supabase
-        .from("cms_pages")
+      locals.db
+        .selectFrom("cms_pages")
         .select("slug")
-        .eq("status", "published")
-        .limit(5000),
-      locals.supabase
-        .from("posts")
-        .select("slug")
-        .eq("status", "published")
-        .lte("published_at", new Date().toISOString())
-        .limit(5000),
+        .where("status", "=", "published")
+        .limit(5000)
+        .execute(),
+      publishedPosts(locals.db).select("slug").limit(5000).execute(),
     ])
-    slugs = (pages.data ?? []).map((p) => p.slug)
-    postSlugs = (posts.data ?? []).map((p) => p.slug)
+    slugs = pages.map((p) => p.slug)
+    postSlugs = posts.map((p) => p.slug)
   }
   setHeaders({ "cache-control": "public, max-age=600, s-maxage=3600" })
   return await sitemap.response({

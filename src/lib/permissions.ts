@@ -1,6 +1,6 @@
 // Role -> permission mapping. Pure and shared, so the UI can hide what the
 // server would refuse anyway. The server is always the enforcement point.
-import type { AppRole } from "../DatabaseDefinitions"
+import type { AppRole } from "./server/db/schema"
 
 export const PERMISSIONS = [
   "admin.access",

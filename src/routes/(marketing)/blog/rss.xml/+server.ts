@@ -1,4 +1,5 @@
 import { getSettings } from "$lib/server/settings"
+import { publishedPosts } from "$lib/server/posts"
 import type { RequestHandler } from "./$types"
 
 const esc = (s: string) =>
@@ -15,16 +16,16 @@ const esc = (s: string) =>
   )
 
 export const GET: RequestHandler = async ({ locals, url }) => {
-  const s = await getSettings(locals.supabaseServiceRole)
-  const { data: posts } = await locals.supabase
-    .from("posts")
-    .select("slug, title, excerpt, published_at, author_name")
-    .eq("status", "published")
-    .lte("published_at", new Date().toISOString())
-    .order("published_at", { ascending: false })
-    .limit(50)
+  const [s, posts] = await Promise.all([
+    getSettings(locals.db),
+    publishedPosts(locals.db)
+      .select(["slug", "title", "excerpt", "published_at", "author_name"])
+      .orderBy("published_at", "desc")
+      .limit(50)
+      .execute(),
+  ])
   const origin = url.origin
-  const items = (posts ?? [])
+  const items = posts
     .map(
       (p) => `<item>
 <title>${esc(p.title)}</title>

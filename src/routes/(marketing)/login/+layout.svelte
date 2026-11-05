@@ -19,8 +19,8 @@
 >
   <div class="flex flex-col w-64 lg:w-80">
     {@render children?.()}
-    <div class="mt-8 {isEurope ? 'block' : 'hidden'}">
-      🍪 Logging in uses Cookies 🍪
+    <div class="mt-8 text-sm {isEurope ? 'block' : 'hidden'}">
+      Signing in uses a cookie to keep you signed in.
     </div>
   </div>
 </div>

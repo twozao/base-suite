@@ -19,8 +19,6 @@
       }
     }),
   )
-  const contactOf = (d: (typeof data.deals)[number]) =>
-    Array.isArray(d.contact) ? d.contact[0] : d.contact
 </script>
 
 <PageHeader
@@ -48,11 +46,11 @@
             >{col.deals.length}</span
           >
         </div>
-        <div class="text-xs text-base-content/60 mt-1">{col.totals || "—"}</div>
+        <div class="text-xs text-base-content/60 mt-1">{col.totals || "-"}</div>
       </header>
       <div class="p-2 space-y-2 overflow-y-auto">
         {#each col.deals as d (d.id)}
-          {@const ct = contactOf(d)}
+          {@const ct = d.contact}
           <article
             class="rounded-lg border border-base-300 p-3 bg-base-100 shadow-sm"
           >
@@ -60,7 +58,7 @@
             {#if ct}<a
                 class="text-xs link link-hover text-base-content/70"
                 href="/admin/crm/{ct.id}"
-                >{ct.name || ct.email}{ct.company ? ` · ${ct.company}` : ""}</a
+                >{ct.name || ct.email}{ct.company ? `, ${ct.company}` : ""}</a
               >{/if}
             <div class="mt-2 flex items-center justify-between text-xs">
               <span class="font-semibold"

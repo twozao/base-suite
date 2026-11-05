@@ -5,10 +5,9 @@ import { saveSetting, settingsSchema, type SettingKey } from "./settings"
 import { audit } from "./audit"
 
 /**
- * Save a structured setting posted as JSON in a `payload` form field.
- * Rich editors (homepage sections, plans, menus) keep their state in the
- * browser and submit it in one piece; the server validates the whole object
- * with the same zod schema used when reading it.
+ * Save a structured setting posted as JSON in a `payload` form field. Rich editors (homepage
+ * sections, plans, menus) keep their state in the browser and submit it in one piece; the server
+ * validates the whole object with the same zod schema used when reading it.
  */
 export const saveJsonSetting = async (
   event: RequestEvent,
@@ -31,16 +30,15 @@ export const saveJsonSetting = async (
   const parsed = settingsSchema[key].safeParse(value)
   if (!parsed.success) {
     const issue = parsed.error.issues[0]
-    const where = issue.path.length ? `${issue.path.join(" → ")}: ` : ""
+    const where = issue.path.length ? `${issue.path.join(" > ")}: ` : ""
     return fail(400, { section, error: `${where}${issue.message}` })
   }
-  const { error } = await saveSetting(
-    event.locals.supabaseServiceRole,
-    key,
-    parsed.data as never,
-    staff.userId,
-  )
-  if (error) return fail(500, { section, error: "Could not save" })
+  try {
+    await saveSetting(event.locals.db, key, parsed.data as never, staff.userId)
+  } catch (e) {
+    console.error("saveSetting failed", key, e instanceof Error ? e.message : e)
+    return fail(500, { section, error: "Could not save" })
+  }
   await audit(event, "settings.updated", { type: "settings", id: key })
-  return { section, message: "Saved — live on your site now" }
+  return { section, message: "Saved - live on your site now" }
 }

@@ -1,5 +1,7 @@
-import type { SupabaseClient } from "@supabase/supabase-js"
-import type { CrmActivityKind, Database } from "../../DatabaseDefinitions"
+import type { Db } from "./db"
+import { isUniqueViolation } from "./db/errors"
+import { nowIso } from "./db/json"
+import type { CrmActivityKind } from "./db/schema"
 import { isModuleEnabled } from "$lib/modules"
 
 export type LeadEvent = {
@@ -20,15 +22,11 @@ const clip = (v: string | null | undefined, max: number) => {
 }
 
 /**
- * Record a customer touchpoint in the CRM: finds or creates the contact by
- * email and appends an activity. Called from other modules (contact form,
- * chat, bookings, newsletter, billing). No-op when the CRM module is off.
- * Never throws — a CRM hiccup must not break the feature that called it.
+ * Record a customer touchpoint in the CRM: finds or creates the contact by email and appends an
+ * activity. Called from other modules (contact form, chat, bookings, newsletter, billing). No-op
+ * when the CRM module is off. Never throws: a CRM hiccup must not break the feature that called it.
  */
-export const captureLead = async (
-  db: SupabaseClient<Database>,
-  ev: LeadEvent,
-) => {
+export const captureLead = async (db: Db, ev: LeadEvent) => {
   if (!isModuleEnabled("crm")) return null
   const email = clip(ev.email, 320)?.toLowerCase() ?? null
   const name = clip(ev.name, 200)
@@ -36,58 +34,64 @@ export const captureLead = async (
   try {
     let contactId: string | null = null
     if (email) {
-      const { data: existing } = await db
-        .from("crm_contacts")
-        .select("id, name, company, phone, user_id")
-        .eq("email", email)
-        .maybeSingle()
+      const existing = await db
+        .selectFrom("crm_contacts")
+        .select(["id", "name", "company", "phone", "user_id"])
+        .where("email", "=", email)
+        .executeTakeFirst()
       if (existing) {
         contactId = existing.id
         await db
-          .from("crm_contacts")
-          .update({
+          .updateTable("crm_contacts")
+          .set({
             name: existing.name ?? name,
             company: existing.company ?? clip(ev.company, 200),
             phone: existing.phone ?? clip(ev.phone, 60),
             user_id: existing.user_id ?? ev.userId ?? null,
-            last_activity_at: new Date().toISOString(),
+            last_activity_at: nowIso(),
           })
-          .eq("id", existing.id)
+          .where("id", "=", existing.id)
+          .execute()
       }
     }
     if (!contactId) {
-      const { data, error } = await db
-        .from("crm_contacts")
-        .insert({
-          email,
-          name,
-          company: clip(ev.company, 200),
-          phone: clip(ev.phone, 60),
-          user_id: ev.userId ?? null,
-          source: ev.source.slice(0, 40),
-        })
-        .select("id")
-        .single()
-      if (error) {
-        // Lost a race with a concurrent insert for the same email: retry read
-        if (error.code === "23505" && email) {
-          const { data: again } = await db
-            .from("crm_contacts")
-            .select("id")
-            .eq("email", email)
-            .single()
-          contactId = again?.id ?? null
-        } else throw error
-      } else contactId = data.id
+      const id = crypto.randomUUID()
+      try {
+        await db
+          .insertInto("crm_contacts")
+          .values({
+            id,
+            email,
+            name,
+            company: clip(ev.company, 200),
+            phone: clip(ev.phone, 60),
+            user_id: ev.userId ?? null,
+            source: ev.source.slice(0, 40),
+          })
+          .execute()
+        contactId = id
+      } catch (e) {
+        // Lost a race with a concurrent insert for the same email: read it back
+        if (!(isUniqueViolation(e) && email)) throw e
+        const again = await db
+          .selectFrom("crm_contacts")
+          .select("id")
+          .where("email", "=", email)
+          .executeTakeFirst()
+        contactId = again?.id ?? null
+      }
     }
     if (!contactId) return null
-    await db.from("crm_activities").insert({
-      contact_id: contactId,
-      kind: ev.kind,
-      body: clip(ev.body, 5000),
-      ref_type: ev.ref?.type ?? null,
-      ref_id: ev.ref?.id ?? null,
-    })
+    await db
+      .insertInto("crm_activities")
+      .values({
+        contact_id: contactId,
+        kind: ev.kind,
+        body: clip(ev.body, 5000),
+        ref_type: ev.ref?.type ?? null,
+        ref_id: ev.ref?.id ?? null,
+      })
+      .execute()
     return contactId
   } catch (e) {
     console.error(

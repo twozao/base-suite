@@ -20,15 +20,13 @@
       <h2 class="card-title text-base">Profile</h2>
       <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
         <dt class="opacity-60">Name</dt>
-        <dd>{data.profile?.full_name ?? "—"}</dd>
+        <dd>{data.profile?.full_name ?? "-"}</dd>
         <dt class="opacity-60">Company</dt>
-        <dd>{data.profile?.company_name ?? "—"}</dd>
+        <dd>{data.profile?.company_name ?? "-"}</dd>
         <dt class="opacity-60">Website</dt>
-        <dd class="break-all">{data.profile?.website ?? "—"}</dd>
+        <dd class="break-all">{data.profile?.website ?? "-"}</dd>
         <dt class="opacity-60">Email</dt>
         <dd>{data.user.confirmed ? "Verified" : "Unverified"}</dd>
-        <dt class="opacity-60">Sign-in</dt>
-        <dd>{data.user.providers.join(", ") || "email"}</dd>
         <dt class="opacity-60">Joined</dt>
         <dd>{formatDate(data.user.createdAt)}</dd>
         <dt class="opacity-60">Last seen</dt>
@@ -136,7 +134,7 @@
         <h2 class="card-title text-base">Bookings</h2>
         {#each data.bookings as b}
           <div class="flex justify-between py-1 text-sm">
-            <span>{b.event_name} · {formatDate(b.start_time)}</span><StatusBadge
+            <span>{b.event_name}, {formatDate(b.start_time)}</span><StatusBadge
               status={b.status}
             />
           </div>

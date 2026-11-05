@@ -30,7 +30,7 @@ const contactSchema = z.object({
 
 export const load: PageServerLoad = async ({ locals }) => {
   requireModule("contact")
-  const settings = await getSettings(locals.supabaseServiceRole)
+  const settings = await getSettings(locals.db)
   return {
     successMessage: settings.contact.successMessage,
     supportEmail: settings.general.supportEmail,
@@ -42,7 +42,7 @@ export const actions: Actions = {
     requireModule("contact")
     const {
       request,
-      locals: { supabaseServiceRole },
+      locals: { db },
     } = event
     const formData = await request.formData()
 
@@ -65,7 +65,7 @@ export const actions: Actions = {
     }
 
     const allowed = await rateLimit(
-      supabaseServiceRole,
+      db,
       `contact:${clientIp(event)}`,
       RATE_LIMITS.contactForm,
     )
@@ -76,24 +76,28 @@ export const actions: Actions = {
     }
 
     const d = parsed.data
-    const { error: insertError } = await supabaseServiceRole
-      .from("contact_requests")
-      .insert({
-        first_name: d.first_name,
-        last_name: d.last_name,
-        email: d.email.toLowerCase(),
-        company_name: d.company,
-        phone: d.phone,
-        message_body: d.message,
-        updated_at: new Date(),
-      })
-
-    if (insertError) {
-      console.error("Error saving contact request", insertError.message)
+    try {
+      await db
+        .insertInto("contact_requests")
+        .values({
+          id: crypto.randomUUID(),
+          first_name: d.first_name,
+          last_name: d.last_name,
+          email: d.email.toLowerCase(),
+          company_name: d.company,
+          phone: d.phone,
+          message_body: d.message,
+        })
+        .execute()
+    } catch (e) {
+      console.error(
+        "Error saving contact request",
+        e instanceof Error ? e.message : e,
+      )
       error(500, "Error saving your message")
     }
 
-    await captureLead(supabaseServiceRole, {
+    await captureLead(db, {
       email: d.email,
       name: `${d.first_name} ${d.last_name}`,
       company: d.company,
@@ -104,7 +108,7 @@ export const actions: Actions = {
       body: d.message,
     })
 
-    const settings = await getSettings(supabaseServiceRole)
+    const settings = await getSettings(db)
     if (settings.contact.notifyAdmin) {
       await sendAdminEmail({
         subject: "New contact request",

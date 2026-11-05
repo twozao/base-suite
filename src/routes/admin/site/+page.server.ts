@@ -5,18 +5,22 @@ import type { Actions, PageServerLoad } from "./$types"
 
 export const load: PageServerLoad = async (event) => {
   await requirePermission(event, "settings.manage")
-  const s = await getSettings(event.locals.supabaseServiceRole)
-  const { data: pages } = await event.locals.supabaseServiceRole
-    .from("cms_pages")
-    .select("slug, title")
-    .eq("status", "published")
-    .order("title")
-    .limit(100)
+  const db = event.locals.db
+  const [s, pages] = await Promise.all([
+    getSettings(db),
+    db
+      .selectFrom("cms_pages")
+      .select(["slug", "title"])
+      .where("status", "=", "published")
+      .orderBy("title")
+      .limit(100)
+      .execute(),
+  ])
   return {
     brand: s.brand,
     navigation: s.navigation,
     general: s.general,
-    pages: pages ?? [],
+    pages,
   }
 }
 

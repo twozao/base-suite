@@ -3,9 +3,11 @@ import { env } from "$env/dynamic/private"
 import {
   bookingFromWebhook,
   calendlyWebhookSchema,
+  upsertBooking,
   verifyCalendlySignature,
 } from "$lib/server/booking/calendly"
 import { requireModule } from "$lib/server/auth/staff"
+import { findUserIdByEmail } from "$lib/server/auth/directory"
 import { sendAdminEmail } from "$lib/mailer"
 import { captureLead } from "$lib/server/crm"
 import type { RequestHandler } from "./$types"
@@ -40,26 +42,17 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   }
 
   const row = bookingFromWebhook(parsed.data)
-  const db = locals.supabaseServiceRole
+  const db = locals.db
 
-  // Link to an account when the invitee email matches a user's profile.
-  let userId: string | null = null
-  if (row.invitee_email) {
-    const { data: users } = await db.rpc("admin_list_users", {
-      p_search: row.invitee_email,
-      p_limit: 5,
-      p_offset: 0,
-    })
-    userId =
-      users?.find((u) => u.email.toLowerCase() === row.invitee_email)?.id ??
-      null
-  }
+  // Link to an account when the invitee email matches a user.
+  const userId = row.invitee_email
+    ? await findUserIdByEmail(db, row.invitee_email)
+    : null
 
-  const { error: upsertError } = await db
-    .from("bookings")
-    .upsert({ ...row, user_id: userId }, { onConflict: "external_id" })
-  if (upsertError) {
-    console.error("Booking upsert failed", upsertError.message)
+  try {
+    await upsertBooking(db, row, userId)
+  } catch (e) {
+    console.error("Booking upsert failed", e instanceof Error ? e.message : e)
     error(500, "Processing failed")
   }
 

@@ -5,6 +5,8 @@ export default defineConfig({
   plugins: [sveltekit()],
   test: {
     include: ["src/**/*.{test,spec}.{js,ts}"],
-    globals: true, /// allows to skip import of test functions like `describe`, `it`, `expect`, etc.
+    globals: true, // allows skipping the import of describe, it, expect and friends
+    // Tests on a shared Postgres database (TEST_DATABASE_URL) must not run files side by side.
+    fileParallelism: !process.env.TEST_DATABASE_URL,
   },
 })

@@ -1,6 +1,7 @@
 import { z } from "zod"
-import type { SupabaseClient } from "@supabase/supabase-js"
-import type { Database, Json } from "../../DatabaseDefinitions"
+import type { Db } from "./db"
+import { nowIso, parseJson } from "./db/json"
+import type { Json } from "./db/schema"
 import {
   brandSchema,
   navigationSchema,
@@ -12,9 +13,8 @@ import {
   DEFAULT_PRICING,
 } from "./content_schema"
 
-// Every runtime-editable setting is declared here with a schema and default.
-// Unknown keys in the database are ignored; invalid values fall back to the
-// default, so a bad row can never break the site.
+// Every runtime-editable setting is declared here with a schema and default. Unknown keys in the
+// database are ignored; invalid values fall back to the default, so a bad row can never break the site.
 
 const httpsUrl = z
   .string()
@@ -101,8 +101,8 @@ const defaults = (): Settings =>
     ]),
   ) as Settings
 
-// Per-instance cache. Settings change rarely; a short TTL keeps every request
-// from hitting the database while edits still show up within seconds.
+// Per-instance cache. Settings change rarely; a short TTL keeps every request from hitting the
+// database while edits still show up within seconds.
 const TTL_MS = 30_000
 let cache: { at: number; value: Settings } | null = null
 
@@ -110,22 +110,28 @@ export const invalidateSettings = () => {
   cache = null
 }
 
-export const getSettings = async (
-  supabaseServiceRole: SupabaseClient<Database>,
-): Promise<Settings> => {
+export const getSettings = async (db: Db): Promise<Settings> => {
   if (cache && Date.now() - cache.at < TTL_MS) return cache.value
   const result = defaults()
-  const { data, error } = await supabaseServiceRole
-    .from("site_settings")
-    .select("key, value")
-  if (error) {
-    console.error("Failed to load settings, using defaults", error.message)
+  let rows: { key: string; value: string }[]
+  try {
+    rows = await db
+      .selectFrom("site_settings")
+      .select(["key", "value"])
+      .execute()
+  } catch (e) {
+    console.error(
+      "Failed to load settings, using defaults",
+      e instanceof Error ? e.message : e,
+    )
     return result
   }
-  for (const row of data ?? []) {
+  for (const row of rows) {
     if (!(row.key in settingsSchema)) continue
     const key = row.key as SettingKey
-    const parsed = settingsSchema[key].safeParse(row.value)
+    const parsed = settingsSchema[key].safeParse(
+      parseJson<Json>(row.value, null),
+    )
     if (parsed.success) {
       ;(result as Record<SettingKey, unknown>)[key] = parsed.data
     } else {
@@ -137,18 +143,21 @@ export const getSettings = async (
 }
 
 export const saveSetting = async <K extends SettingKey>(
-  supabaseServiceRole: SupabaseClient<Database>,
+  db: Db,
   key: K,
   value: Settings[K],
   userId: string,
 ) => {
   const parsed = settingsSchema[key].parse(value)
-  const { error } = await supabaseServiceRole.from("site_settings").upsert({
-    key,
-    value: parsed as Json,
+  const row = {
+    value: JSON.stringify(parsed),
     updated_by: userId,
-    updated_at: new Date().toISOString(),
-  })
+    updated_at: nowIso(),
+  }
+  await db
+    .insertInto("site_settings")
+    .values({ key, ...row })
+    .onConflict((oc) => oc.column("key").doUpdateSet(row))
+    .execute()
   invalidateSettings()
-  return { error }
 }

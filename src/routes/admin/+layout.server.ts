@@ -5,23 +5,26 @@ import type { LayoutServerLoad } from "./$types"
 
 export const load: LayoutServerLoad = async (event) => {
   const staff = await requirePermission(event, "admin.access")
-  const db = event.locals.supabaseServiceRole
+  const db = event.locals.db
   const p = staff.permissions
+  const count = db.fn.countAll<number>().as("n")
 
-  // Sidebar badges: head-only counts, run in parallel.
+  // Sidebar badges: count-only queries, run in parallel.
   const [contacts, chats] = await Promise.all([
     isModuleEnabled("contact") && p.has("contact.manage")
       ? db
-          .from("contact_requests")
-          .select("id", { count: "exact", head: true })
-          .eq("status", "new")
+          .selectFrom("contact_requests")
+          .select(count)
+          .where("status", "=", "new")
+          .executeTakeFirstOrThrow()
       : null,
     isModuleEnabled("chat") && p.has("chat.respond")
       ? db
-          .from("chat_conversations")
-          .select("id", { count: "exact", head: true })
-          .neq("status", "closed")
-          .gt("unread_by_staff", 0)
+          .selectFrom("chat_conversations")
+          .select(count)
+          .where("status", "!=", "closed")
+          .where("unread_by_staff", ">", 0)
+          .executeTakeFirstOrThrow()
       : null,
   ])
 
@@ -31,8 +34,8 @@ export const load: LayoutServerLoad = async (event) => {
     permissions: [...p],
     nav: adminNavFor(p),
     badges: {
-      "/admin/contact": contacts?.count ?? 0,
-      "/admin/support": chats?.count ?? 0,
+      "/admin/contact": Number(contacts?.n ?? 0),
+      "/admin/support": Number(chats?.n ?? 0),
     } as Record<string, number>,
   }
 }

@@ -1,7 +1,8 @@
-import { error } from "@sveltejs/kit"
 import { env } from "$env/dynamic/private"
 import { requireModule, requirePermission } from "$lib/server/auth/staff"
-import { ilikeTerm, pageParams, searchParam } from "$lib/server/pagination"
+import { nowIso } from "$lib/server/db/json"
+import { containsText } from "$lib/server/db/query"
+import { pageParams, searchParam } from "$lib/server/pagination"
 import type { PageServerLoad } from "./$types"
 
 export const load: PageServerLoad = async (event) => {
@@ -10,31 +11,45 @@ export const load: PageServerLoad = async (event) => {
   const view =
     event.url.searchParams.get("view") === "past" ? "past" : "upcoming"
   const q = searchParam(event.url)
-  const { page, size, from, to } = pageParams(event.url)
-  const now = new Date().toISOString()
+  const { page, size, from } = pageParams(event.url)
+  const now = nowIso()
+  const db = event.locals.db
 
-  let query = event.locals.supabaseServiceRole
-    .from("bookings")
-    .select(
-      "id, event_name, invitee_name, invitee_email, user_id, start_time, end_time, status, cancel_reason",
-      { count: "exact" },
-    )
-    .range(from, to)
-  query =
+  let base =
     view === "upcoming"
-      ? query.gte("start_time", now).order("start_time", { ascending: true })
-      : query.lt("start_time", now).order("start_time", { ascending: false })
+      ? db.selectFrom("bookings").where("start_time", ">=", now)
+      : db.selectFrom("bookings").where("start_time", "<", now)
   if (q) {
-    const t = ilikeTerm(q)
-    query = query.or(
-      `invitee_email.ilike.${t},invitee_name.ilike.${t},event_name.ilike.${t}`,
+    base = base.where((eb) =>
+      eb.or([
+        containsText("invitee_email", q),
+        containsText("invitee_name", q),
+        containsText("event_name", q),
+      ]),
     )
   }
-  const { data, count, error: e } = await query
-  if (e) error(500, "Could not load bookings")
+  const [{ n }, rows] = await Promise.all([
+    base.select(db.fn.countAll<number>().as("n")).executeTakeFirstOrThrow(),
+    base
+      .select([
+        "id",
+        "event_name",
+        "invitee_name",
+        "invitee_email",
+        "user_id",
+        "start_time",
+        "end_time",
+        "status",
+        "cancel_reason",
+      ])
+      .orderBy("start_time", view === "upcoming" ? "asc" : "desc")
+      .limit(size)
+      .offset(from)
+      .execute(),
+  ])
   return {
-    rows: data ?? [],
-    total: count ?? 0,
+    rows,
+    total: Number(n),
     page,
     size,
     q,

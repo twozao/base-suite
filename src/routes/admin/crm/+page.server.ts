@@ -1,7 +1,9 @@
-import { error, fail, redirect } from "@sveltejs/kit"
+import { fail, redirect } from "@sveltejs/kit"
 import { z } from "zod"
 import { requireModule, requirePermission } from "$lib/server/auth/staff"
-import { ilikeTerm, pageParams, searchParam } from "$lib/server/pagination"
+import { isUniqueViolation } from "$lib/server/db/errors"
+import { containsText } from "$lib/server/db/query"
+import { pageParams, searchParam } from "$lib/server/pagination"
 import { audit } from "$lib/server/audit"
 import type { Actions, PageServerLoad } from "./$types"
 
@@ -12,44 +14,67 @@ export const load: PageServerLoad = async (event) => {
   await requirePermission(event, "crm.manage")
   const q = searchParam(event.url)
   const status = event.url.searchParams.get("status") ?? ""
-  const { page, size, from, to } = pageParams(event.url)
-  const db = event.locals.supabaseServiceRole
-  let query = db
-    .from("crm_contacts")
-    .select(
-      "id, email, name, company, status, source, tags, last_activity_at",
-      { count: "exact" },
-    )
-    .order("last_activity_at", { ascending: false })
-    .range(from, to)
+  const { page, size, from } = pageParams(event.url)
+  const db = event.locals.db
+  const count = db.fn.countAll<number>().as("n")
+
+  let base = db.selectFrom("crm_contacts")
   if ((STATUSES as readonly string[]).includes(status))
-    query = query.eq("status", status as (typeof STATUSES)[number])
-  else query = query.neq("status", "archived")
+    base = base.where("status", "=", status as (typeof STATUSES)[number])
+  else base = base.where("status", "!=", "archived")
   if (q) {
-    const t = ilikeTerm(q)
-    query = query.or(`email.ilike.${t},name.ilike.${t},company.ilike.${t}`)
+    base = base.where((eb) =>
+      eb.or([
+        containsText("email", q),
+        containsText("name", q),
+        containsText("company", q),
+      ]),
+    )
   }
-  const head = { count: "exact" as const, head: true }
   const weekAgo = new Date(Date.now() - 7 * 86400e3).toISOString()
-  const [{ data, count, error: e }, leads, customers, newThisWeek] =
-    await Promise.all([
-      query,
-      db.from("crm_contacts").select("id", head).eq("status", "lead"),
-      db.from("crm_contacts").select("id", head).eq("status", "customer"),
-      db.from("crm_contacts").select("id", head).gte("created_at", weekAgo),
-    ])
-  if (e) error(500, "Could not load contacts")
+  const [{ n }, rows, leads, customers, newThisWeek] = await Promise.all([
+    base.select(count).executeTakeFirstOrThrow(),
+    base
+      .select([
+        "id",
+        "email",
+        "name",
+        "company",
+        "status",
+        "source",
+        "last_activity_at",
+      ])
+      .orderBy("last_activity_at", "desc")
+      .limit(size)
+      .offset(from)
+      .execute(),
+    db
+      .selectFrom("crm_contacts")
+      .select(count)
+      .where("status", "=", "lead")
+      .executeTakeFirstOrThrow(),
+    db
+      .selectFrom("crm_contacts")
+      .select(count)
+      .where("status", "=", "customer")
+      .executeTakeFirstOrThrow(),
+    db
+      .selectFrom("crm_contacts")
+      .select(count)
+      .where("created_at", ">=", weekAgo)
+      .executeTakeFirstOrThrow(),
+  ])
   return {
-    rows: data ?? [],
-    total: count ?? 0,
+    rows,
+    total: Number(n),
     page,
     size,
     q,
     status,
     stats: {
-      leads: leads.count ?? 0,
-      customers: customers.count ?? 0,
-      newThisWeek: newThisWeek.count ?? 0,
+      leads: Number(leads.n),
+      customers: Number(customers.n),
+      newThisWeek: Number(newThisWeek.n),
     },
   }
 }
@@ -85,29 +110,26 @@ export const actions: Actions = {
     const d = parsed.data
     if (!d.name && !d.email)
       return fail(400, { error: "Add a name or an email" })
-    const { data, error: e } = await event.locals.supabaseServiceRole
-      .from("crm_contacts")
-      .insert({
-        name: d.name || null,
-        email: d.email || null,
-        company: d.company || null,
-        phone: d.phone || null,
-        source: "manual",
-        owner_id: staff.userId,
-      })
-      .select("id")
-      .single()
-    if (e)
-      return fail(e.code === "23505" ? 400 : 500, {
-        error:
-          e.code === "23505"
-            ? "A contact with this email already exists"
-            : "Could not create contact",
-      })
-    await audit(event, "crm.contact_created", {
-      type: "crm_contact",
-      id: data.id,
-    })
-    redirect(303, `/admin/crm/${data.id}`)
+    const id = crypto.randomUUID()
+    try {
+      await event.locals.db
+        .insertInto("crm_contacts")
+        .values({
+          id,
+          name: d.name || null,
+          email: d.email || null,
+          company: d.company || null,
+          phone: d.phone || null,
+          source: "manual",
+          owner_id: staff.userId,
+        })
+        .execute()
+    } catch (e) {
+      if (isUniqueViolation(e))
+        return fail(400, { error: "A contact with this email already exists" })
+      return fail(500, { error: "Could not create contact" })
+    }
+    await audit(event, "crm.contact_created", { type: "crm_contact", id })
+    redirect(303, `/admin/crm/${id}`)
   },
 }

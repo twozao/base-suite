@@ -1,6 +1,8 @@
 import { z } from "zod"
 import type { RequestEvent } from "@sveltejs/kit"
-import type { ChatMessageRow } from "../../../DatabaseDefinitions"
+import type { Db } from "../db"
+import { nowIso } from "../db/json"
+import type { ChatMessageRow, ChatSender } from "../db/schema"
 import { randomToken, sha256Hex } from "../security/crypto"
 
 export const CHAT_COOKIE = "chat_session"
@@ -24,37 +26,37 @@ export type PublicMessage = Pick<
   "id" | "sender" | "body" | "created_at"
 >
 
-const MESSAGE_FIELDS = "id, sender, body, created_at"
+const MESSAGE_FIELDS = ["id", "sender", "body", "created_at"] as const
 
 /** Find the caller's conversation: by account if signed in, else by cookie. */
 export const findConversation = async (event: RequestEvent) => {
-  const db = event.locals.supabaseServiceRole
+  const db = event.locals.db
   const user = event.locals.user
   if (user) {
-    const { data } = await db
-      .from("chat_conversations")
-      .select("id, status")
-      .eq("user_id", user.id)
-      .order("last_message_at", { ascending: false })
+    const row = await db
+      .selectFrom("chat_conversations")
+      .select(["id", "status"])
+      .where("user_id", "=", user.id)
+      .orderBy("last_message_at", "desc")
       .limit(1)
-      .maybeSingle()
-    return data
+      .executeTakeFirst()
+    return row ?? null
   }
   const token = event.cookies.get(CHAT_COOKIE)
   if (!token || token.length > 100) return null
-  const { data } = await db
-    .from("chat_conversations")
-    .select("id, status")
-    .eq("visitor_token_hash", await sha256Hex(token))
-    .maybeSingle()
-  return data
+  const row = await db
+    .selectFrom("chat_conversations")
+    .select(["id", "status"])
+    .where("visitor_token_hash", "=", await sha256Hex(token))
+    .executeTakeFirst()
+  return row ?? null
 }
 
 export const startConversation = async (
   event: RequestEvent,
   input: { name?: string; email?: string; pageUrl?: string },
 ) => {
-  const db = event.locals.supabaseServiceRole
+  const db = event.locals.db
   const user = event.locals.user
   let tokenHash: string | null = null
   let token: string | null = null
@@ -74,18 +76,18 @@ export const startConversation = async (
     }
   }
 
-  const { data, error } = await db
-    .from("chat_conversations")
-    .insert({
+  const row = await db
+    .insertInto("chat_conversations")
+    .values({
+      id: crypto.randomUUID(),
       user_id: user?.id ?? null,
       visitor_token_hash: tokenHash,
       visitor_name: input.name || null,
       visitor_email: user?.email ?? (input.email || null),
       page_url: pageUrl,
     })
-    .select("id, status")
-    .single()
-  if (error || !data) throw new Error(`Could not start chat: ${error?.message}`)
+    .returning(["id", "status"])
+    .executeTakeFirstOrThrow()
 
   if (token) {
     event.cookies.set(CHAT_COOKIE, token, {
@@ -96,41 +98,83 @@ export const startConversation = async (
       maxAge: COOKIE_MAX_AGE,
     })
   }
-  return data
+  return row
 }
 
-export const addMessage = async (
+/**
+ * Appends a message and keeps the conversation's counters in step, in one transaction: a visitor
+ * message counts as unread for staff and re-opens a closed conversation, a staff message counts
+ * as unread for the visitor.
+ */
+export const appendMessage = async (
+  db: Db,
+  conversationId: string,
+  sender: ChatSender,
+  body: string,
+  authorId: string | null,
+): Promise<PublicMessage> =>
+  db.transaction().execute(async (trx) => {
+    const message = await trx
+      .insertInto("chat_messages")
+      .values({
+        conversation_id: conversationId,
+        sender,
+        body,
+        author_id: authorId,
+      })
+      .returning(MESSAGE_FIELDS)
+      .executeTakeFirstOrThrow()
+    const conversation = await trx
+      .selectFrom("chat_conversations")
+      .select(["status", "unread_by_staff", "unread_by_visitor"])
+      .where("id", "=", conversationId)
+      .executeTakeFirstOrThrow()
+    await trx
+      .updateTable("chat_conversations")
+      .set({
+        last_message_at: message.created_at ?? nowIso(),
+        unread_by_staff:
+          sender === "visitor"
+            ? conversation.unread_by_staff + 1
+            : conversation.unread_by_staff,
+        unread_by_visitor:
+          sender === "staff"
+            ? conversation.unread_by_visitor + 1
+            : conversation.unread_by_visitor,
+        status:
+          sender === "visitor" && conversation.status === "closed"
+            ? "open"
+            : conversation.status,
+      })
+      .where("id", "=", conversationId)
+      .execute()
+    return message
+  })
+
+export const addMessage = (
   event: RequestEvent,
   conversationId: string,
-  sender: "visitor" | "staff" | "system",
+  sender: ChatSender,
   body: string,
-) => {
-  const { data, error } = await event.locals.supabaseServiceRole
-    .from("chat_messages")
-    .insert({
-      conversation_id: conversationId,
-      sender,
-      body,
-      author_id: sender === "system" ? null : (event.locals.user?.id ?? null),
-    })
-    .select(MESSAGE_FIELDS)
-    .single()
-  if (error) throw new Error(`Could not send message: ${error.message}`)
-  return data as PublicMessage
-}
+) =>
+  appendMessage(
+    event.locals.db,
+    conversationId,
+    sender,
+    body,
+    sender === "system" ? null : (event.locals.user?.id ?? null),
+  )
 
 export const listMessages = async (
   event: RequestEvent,
   conversationId: string,
   afterId = 0,
-): Promise<PublicMessage[]> => {
-  const { data, error } = await event.locals.supabaseServiceRole
-    .from("chat_messages")
+): Promise<PublicMessage[]> =>
+  event.locals.db
+    .selectFrom("chat_messages")
     .select(MESSAGE_FIELDS)
-    .eq("conversation_id", conversationId)
-    .gt("id", afterId)
-    .order("id", { ascending: true })
+    .where("conversation_id", "=", conversationId)
+    .where("id", ">", afterId)
+    .orderBy("id", "asc")
     .limit(200)
-  if (error) throw new Error(error.message)
-  return (data ?? []) as PublicMessage[]
-}
+    .execute()

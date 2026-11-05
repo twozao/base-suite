@@ -1,5 +1,5 @@
 import { error, redirect, type RequestEvent } from "@sveltejs/kit"
-import type { AppRole } from "../../../DatabaseDefinitions"
+import type { AppRole } from "../db/schema"
 import { permissionsFor, type Permission } from "$lib/permissions"
 import { isModuleEnabled, type ModuleId } from "$lib/modules"
 
@@ -10,11 +10,7 @@ export type StaffContext = {
   permissions: ReadonlySet<Permission>
 }
 
-/**
- * Loads the current user's roles once per request (memoised on locals).
- * Uses the service role and the *validated* user from safeGetSession, so a
- * forged cookie cannot claim a role.
- */
+/** Loads the current user's roles once per request (memoised on locals). Fails closed on a database error. */
 export const getStaff = async (
   event: Pick<RequestEvent, "locals">,
 ): Promise<StaffContext | null> => {
@@ -25,17 +21,19 @@ export const getStaff = async (
     locals.staff = null
     return null
   }
-  const { data, error: dbError } = await locals.supabaseServiceRole
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", user.id)
-  if (dbError) {
-    console.error("Failed to load roles", dbError.message)
-    // Fail closed: no roles means no admin access.
+  let roles: AppRole[] = []
+  try {
+    const rows = await locals.db
+      .selectFrom("user_roles")
+      .select("role")
+      .where("user_id", "=", user.id)
+      .execute()
+    roles = rows.map((r) => r.role)
+  } catch (e) {
+    console.error("Failed to load roles", e instanceof Error ? e.message : e)
     locals.staff = null
     return null
   }
-  const roles = (data ?? []).map((r) => r.role)
   locals.staff = roles.length
     ? {
         userId: user.id,
@@ -48,9 +46,8 @@ export const getStaff = async (
 }
 
 /**
- * Guard for admin loads and actions. Signed-out users are sent to login;
- * signed-in users without the permission get a 404, so the admin surface is
- * not advertised to them.
+ * Guard for admin loads and actions. Signed-out users are sent to login; signed-in users without
+ * the permission get a 404, so the admin surface is not advertised to them.
  */
 export const requirePermission = async (
   event: Pick<RequestEvent, "locals" | "url">,

@@ -22,7 +22,7 @@ export const actions: Actions = {
     if (!parsed.success)
       return fail(400, { error: parsed.error.issues[0].message })
     const ok = await rateLimit(
-      event.locals.supabaseServiceRole,
+      event.locals.db,
       `newsletter:${clientIp(event)}`,
       { windowSeconds: 3600, max: 5 },
     )

@@ -7,7 +7,7 @@ import type { Actions, PageServerLoad } from "./$types"
 export const load: PageServerLoad = async (event) => {
   requireModule("subscriptions")
   await requirePermission(event, "settings.manage")
-  const s = await getSettings(event.locals.supabaseServiceRole)
+  const s = await getSettings(event.locals.db)
   const key = env.PRIVATE_STRIPE_API_KEY ?? ""
   return {
     pricing: s.pricing,

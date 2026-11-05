@@ -1,8 +1,8 @@
-import type { SupabaseClient } from "@supabase/supabase-js"
-import type { Database } from "../../DatabaseDefinitions"
+import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises"
+import { join } from "node:path"
+import { env } from "$env/dynamic/private"
 import { randomToken } from "./security/crypto"
 
-export const MEDIA_BUCKET = "media"
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024
 
 // Raster images only. SVG is excluded on purpose: it can carry script.
@@ -41,6 +41,10 @@ const TYPES: Record<
   },
 }
 
+const CONTENT_TYPE_BY_EXT: Record<string, string> = Object.fromEntries(
+  Object.entries(TYPES).map(([type, t]) => [t.ext, type]),
+)
+
 export const MEDIA_NAME_RE =
   /^[0-9]{13}-[A-Za-z0-9_-]{8}-[a-z0-9-]{1,60}\.(png|jpg|gif|webp|avif)$/
 
@@ -69,19 +73,56 @@ export const validateUpload = async (file: File) => {
   return { bytes, type, name }
 }
 
-export const listMedia = async (db: SupabaseClient<Database>) => {
-  const { data, error } = await db.storage.from(MEDIA_BUCKET).list("", {
-    limit: 500,
-    sortBy: { column: "name", order: "desc" },
-  })
-  if (error) return { files: [], error: error.message }
-  const files = (data ?? [])
-    .filter((f) => MEDIA_NAME_RE.test(f.name))
-    .map((f) => ({
-      name: f.name,
-      size: (f.metadata as { size?: number } | null)?.size ?? null,
-      createdAt: f.created_at ?? null,
-      url: db.storage.from(MEDIA_BUCKET).getPublicUrl(f.name).data.publicUrl,
-    }))
+// Uploads live on local disk (MEDIA_DIR, default data/uploads) and are served by /media/<name>.
+// Names are unique and validated by MEDIA_NAME_RE, so a path can never leave the directory.
+const mediaDir = () => env.MEDIA_DIR || "data/uploads"
+
+export const mediaUrl = (name: string) => `/media/${name}`
+
+export const saveMedia = async (name: string, bytes: Uint8Array) => {
+  if (!MEDIA_NAME_RE.test(name)) throw new Error("Invalid media name")
+  await mkdir(mediaDir(), { recursive: true })
+  await writeFile(join(mediaDir(), name), bytes, { flag: "wx" })
+}
+
+export const deleteMedia = async (name: string) => {
+  if (!MEDIA_NAME_RE.test(name)) throw new Error("Invalid media name")
+  await rm(join(mediaDir(), name), { force: true })
+}
+
+export const readMedia = async (name: string) => {
+  if (!MEDIA_NAME_RE.test(name)) return null
+  try {
+    const bytes = await readFile(join(mediaDir(), name))
+    const ext = name.slice(name.lastIndexOf(".") + 1)
+    return { bytes, type: CONTENT_TYPE_BY_EXT[ext] }
+  } catch {
+    return null
+  }
+}
+
+export const listMedia = async () => {
+  let names: string[]
+  try {
+    names = await readdir(mediaDir())
+  } catch {
+    return { files: [], error: null }
+  }
+  const files = await Promise.all(
+    names
+      .filter((n) => MEDIA_NAME_RE.test(n))
+      .sort()
+      .reverse()
+      .slice(0, 500)
+      .map(async (name) => {
+        const s = await stat(join(mediaDir(), name))
+        return {
+          name,
+          size: s.size,
+          createdAt: s.mtime.toISOString(),
+          url: mediaUrl(name),
+        }
+      }),
+  )
   return { files, error: null }
 }

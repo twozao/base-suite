@@ -1,35 +1,51 @@
-import { error } from "@sveltejs/kit"
 import { requirePermission } from "$lib/server/auth/staff"
+import { isAuditAction } from "$lib/server/audit"
+import { parseJson } from "$lib/server/db/json"
+import type { Json } from "$lib/server/db/schema"
 import { pageParams } from "$lib/server/pagination"
 import type { PageServerLoad } from "./$types"
 
 export const load: PageServerLoad = async (event) => {
   await requirePermission(event, "audit.view")
-  const { page, size, from, to } = pageParams(event.url, 50)
-  const action = (event.url.searchParams.get("action") ?? "").slice(0, 100)
-  const db = event.locals.supabaseServiceRole
-  let query = db
-    .from("audit_log")
-    .select(
-      "id, actor_id, action, target_type, target_id, meta, ip, created_at",
-      { count: "exact" },
-    )
-    .order("id", { ascending: false })
-    .range(from, to)
-  if (action) query = query.eq("action", action)
-  const { data, count, error: e } = await query
-  if (e) error(500, "Could not load audit log")
+  const { page, size, from } = pageParams(event.url, 50)
+  const requested = event.url.searchParams.get("action")
+  const action = isAuditAction(requested) ? requested : ""
+  const db = event.locals.db
+
+  let base = db.selectFrom("audit_log")
+  if (action) base = base.where("action", "=", action)
+  const [{ n }, data] = await Promise.all([
+    base.select(db.fn.countAll<number>().as("n")).executeTakeFirstOrThrow(),
+    base
+      .select([
+        "id",
+        "actor_id",
+        "action",
+        "target_type",
+        "target_id",
+        "meta",
+        "ip",
+        "created_at",
+      ])
+      .orderBy("id", "desc")
+      .limit(size)
+      .offset(from)
+      .execute(),
+  ])
+  const rows = data.map((r) => ({ ...r, meta: parseJson<Json>(r.meta, {}) }))
 
   // Resolve actor emails for the rows on this page only
   const actorIds = [
-    ...new Set((data ?? []).map((r) => r.actor_id).filter(Boolean)),
-  ] as string[]
+    ...new Set(rows.map((r) => r.actor_id).filter((id) => id !== null)),
+  ]
   const emails: Record<string, string> = {}
-  await Promise.all(
-    actorIds.map(async (id) => {
-      const { data: u } = await db.auth.admin.getUserById(id)
-      if (u.user?.email) emails[id] = u.user.email
-    }),
-  )
-  return { rows: data ?? [], total: count ?? 0, page, size, action, emails }
+  if (actorIds.length) {
+    const users = await db
+      .selectFrom("users")
+      .select(["id", "email"])
+      .where("id", "in", actorIds)
+      .execute()
+    for (const u of users) emails[u.id] = u.email
+  }
+  return { rows, total: Number(n), page, size, action, emails }
 }

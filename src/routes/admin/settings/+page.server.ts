@@ -13,7 +13,7 @@ import type { Actions, PageServerLoad } from "./$types"
 export const load: PageServerLoad = async (event) => {
   await requirePermission(event, "settings.manage")
   return {
-    settings: await getSettings(event.locals.supabaseServiceRole),
+    settings: await getSettings(event.locals.db),
     modules: {
       chat: isModuleEnabled("chat"),
       booking: isModuleEnabled("booking"),
@@ -40,14 +40,12 @@ const save = async (
     })
   }
   // Value was validated against this key's schema just above.
-  const { error } = await saveSetting(
-    event.locals.supabaseServiceRole,
-    key,
-    parsed.data as never,
-    staff.userId,
-  )
-  if (error)
+  try {
+    await saveSetting(event.locals.db, key, parsed.data as never, staff.userId)
+  } catch (e) {
+    console.error("saveSetting failed", key, e instanceof Error ? e.message : e)
     return fail(500, { section: key, error: "Could not save settings" })
+  }
   await audit(event, "settings.updated", { type: "settings", id: key })
   return { section: key, message: "Saved" }
 }

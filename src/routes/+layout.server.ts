@@ -4,11 +4,9 @@ import { isModuleEnabled } from "$lib/modules"
 import type { PublicSite } from "$lib/site"
 import type { LayoutServerLoad } from "./$types"
 
-// Brand, navigation and theme for every page. Settings are cached per
-// instance (see getSettings), so this costs no database round trip on most
-// requests.
+// Brand, navigation and theme for every page. Settings are cached per instance (see getSettings).
 export const load: LayoutServerLoad = async ({ locals }) => {
-  const s = await getSettings(locals.supabaseServiceRole)
+  const s = await getSettings(locals.db)
   const site: PublicSite = {
     brand: s.brand,
     navigation: s.navigation,

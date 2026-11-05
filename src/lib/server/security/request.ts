@@ -1,13 +1,10 @@
 import type { RequestEvent } from "@sveltejs/kit"
 
-/** Best-effort client IP, preferring headers set by the edge (not the user). */
+/**
+ * Client IP as resolved by the platform adapter (adapter-node reads ADDRESS_HEADER, adapter-cloudflare
+ * cf-connecting-ip, adapter-vercel x-forwarded-for). Raw headers are never trusted: a client can set them.
+ */
 export const clientIp = (event: RequestEvent): string => {
-  const h = event.request.headers
-  const fromEdge =
-    h.get("cf-connecting-ip") ||
-    h.get("x-real-ip") ||
-    h.get("x-forwarded-for")?.split(",")[0]?.trim()
-  if (fromEdge) return fromEdge.slice(0, 64)
   try {
     return event.getClientAddress().slice(0, 64)
   } catch {

@@ -20,8 +20,8 @@
 <SettingsModule
   title="Change Email"
   editable={true}
-  successTitle="Email change initiated"
-  successBody="You should receive emails at both the old and new address to confirm the change. Please click the link in both emails to finalized the change. Until finalized, you must sign in with your current email."
+  successTitle="Email changed"
+  successBody="Sign in with the new address from now on. If email is set up on this site, a verification link was sent to it."
   formTarget="/account/api?/updateEmail"
   fields={[
     {
@@ -29,6 +29,12 @@
       label: "Email",
       initialValue: user?.email ?? "",
       placeholder: "Email address",
+    },
+    {
+      id: "currentPassword",
+      label: "Current Password",
+      initialValue: "",
+      inputType: "password",
     },
   ]}
 />

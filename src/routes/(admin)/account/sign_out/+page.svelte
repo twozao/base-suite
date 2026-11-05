@@ -1,22 +1,15 @@
 <script lang="ts">
-  import { goto } from "$app/navigation"
   import { onMount } from "svelte"
 
-  let { data } = $props()
-
-  let supabase = $derived(data.supabase)
-  let message = $state("Signing out....")
-
-  // on mount, sign out
-  onMount(() => {
-    supabase.auth.signOut().then(({ error }) => {
-      if (error) {
-        message = "There was an issue signing out."
-      } else {
-        goto("/")
-      }
-    })
-  })
+  let form: HTMLFormElement
+  onMount(() => form.requestSubmit())
 </script>
 
-<h1 class="text-2xl font-bold m-6 mx-auto my-auto">{message}</h1>
+<svelte:head>
+  <title>Signing out</title>
+</svelte:head>
+
+<form method="POST" bind:this={form} class="m-6 mx-auto text-center">
+  <h1 class="text-2xl font-bold mb-4">Signing out...</h1>
+  <button class="btn btn-outline">Sign out</button>
+</form>

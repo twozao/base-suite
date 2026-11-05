@@ -24,6 +24,15 @@
   View our <a href="/pricing" target="_blank" class="link">pricing page</a> for details.
 </div>
 
+{#if data.billingUnavailable}
+  <div role="alert" class="alert alert-warning mt-6 max-w-xl">
+    <span
+      >Online payment is not set up on this site yet, so plans cannot be started
+      here. Please contact us to subscribe.</span
+    >
+  </div>
+{/if}
+
 {#if !data.isActiveCustomer}
   <div class="mt-8">
     <PricingCards plans={data.plans} {currentPlanId} />

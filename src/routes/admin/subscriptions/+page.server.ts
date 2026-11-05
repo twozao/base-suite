@@ -1,4 +1,3 @@
-import { error } from "@sveltejs/kit"
 import { env } from "$env/dynamic/private"
 import { requireModule, requirePermission } from "$lib/server/auth/staff"
 import { pageParams } from "$lib/server/pagination"
@@ -18,46 +17,58 @@ const STATUSES = [
 export const load: PageServerLoad = async (event) => {
   requireModule("subscriptions")
   await requirePermission(event, "billing.view")
-  const db = event.locals.supabaseServiceRole
+  const db = event.locals.db
   const status = event.url.searchParams.get("status") ?? ""
-  const { page, size, from, to } = pageParams(event.url)
+  const { page, size, from } = pageParams(event.url)
 
-  let query = db
-    .from("subscriptions")
-    .select(
-      "id, user_id, stripe_customer_id, status, product_id, current_period_end, cancel_at_period_end, updated_at",
-      { count: "exact" },
-    )
-    .order("updated_at", { ascending: false })
-    .range(from, to)
-  if (STATUSES.includes(status)) query = query.eq("status", status)
+  let base = db.selectFrom("subscriptions")
+  if (STATUSES.includes(status)) base = base.where("status", "=", status)
 
-  const [{ data, count, error: e }, active] = await Promise.all([
-    query,
+  const [rows, { n: total }, active] = await Promise.all([
+    base
+      .select([
+        "id",
+        "user_id",
+        "stripe_customer_id",
+        "status",
+        "product_id",
+        "current_period_end",
+        "cancel_at_period_end",
+        "updated_at",
+      ])
+      .orderBy("updated_at", "desc")
+      .limit(size)
+      .offset(from)
+      .execute(),
+    base.select(db.fn.countAll<number>().as("n")).executeTakeFirstOrThrow(),
     db
-      .from("subscriptions")
-      .select("product_id")
-      .in("status", ["active", "trialing"])
-      .limit(10_000),
+      .selectFrom("subscriptions")
+      .select(["product_id", db.fn.countAll<number>().as("n")])
+      .where("status", "in", ["active", "trialing"])
+      .groupBy("product_id")
+      .execute(),
   ])
-  if (e) error(500, "Could not load subscriptions")
 
   const { plans } = (await getSettings(db)).pricing
   const planName = (productId: string | null) =>
     plans.find((p) => !!p.stripeProductId && p.stripeProductId === productId)
       ?.name ??
     productId ??
-    "—"
+    "-"
 
   const byPlan = new Map<string, number>()
-  for (const s of active.data ?? []) {
-    const n = planName(s.product_id)
-    byPlan.set(n, (byPlan.get(n) ?? 0) + 1)
+  for (const s of active) {
+    const name = planName(s.product_id)
+    byPlan.set(name, (byPlan.get(name) ?? 0) + Number(s.n))
   }
 
   return {
-    rows: (data ?? []).map((s) => ({ ...s, plan: planName(s.product_id) })),
-    total: count ?? 0,
+    rows: rows.map((s) => ({
+      ...s,
+      cancel_at_period_end: s.cancel_at_period_end === 1,
+      plan: planName(s.product_id),
+    })),
+    total: Number(total),
     page,
     size,
     status,
