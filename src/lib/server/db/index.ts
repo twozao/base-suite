@@ -1,3 +1,5 @@
+import { mkdirSync } from "node:fs"
+import { dirname } from "node:path"
 import SqliteDatabase from "better-sqlite3"
 import { Migrator, type Migration } from "kysely/migration"
 import { Kysely, PostgresDialect, SqliteDialect } from "kysely"
@@ -35,7 +37,10 @@ export const openDb = (url: string): { db: Db; dialect: DialectName } => {
       dialect,
     }
   }
-  const database = new SqliteDatabase(sqlitePath(url))
+  const path = sqlitePath(url)
+  // A fresh clone has no data/ folder yet; create it so `npm run dev` works without setup.sh.
+  if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true })
+  const database = new SqliteDatabase(path)
   database.pragma("foreign_keys = ON")
   database.pragma("busy_timeout = 5000")
   if (database.memory === false) {
