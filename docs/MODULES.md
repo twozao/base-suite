@@ -7,11 +7,12 @@ Base Suite is a small core plus eight independent modules. This page covers day-
 | Pages & Blog `cms`            | `/<slug>`, `/blog`, `/search`        | `/admin/pages`, `/admin/blog`                  |
 | Contact form `contact`        | `/contact_us`                        | `/admin/contact` (inbox with status and notes) |
 | Live chat `chat`              | Chat widget on every page            | `/admin/support` (inbox, replies, assignment)  |
-| Online booking `booking`      | `/book`                              | `/admin/bookings`                              |
+| Online booking `booking`      | `/book`, `/book/<event>`             | `/admin/bookings`, event types, availability   |
 | Newsletter `newsletter`       | Signup form, `/newsletter`           | `/admin/newsletter` (subscribers, CSV export)  |
 | Subscriptions `subscriptions` | `/pricing`, checkout, billing portal | `/admin/subscriptions`, `/admin/pricing`       |
 | CRM `crm`                     | none                                 | `/admin/crm`, `/admin/crm/deals`               |
 | Analytics `analytics`         | `/api/pv` beacon                     | `/admin/analytics`                             |
+| AI assistant `assistant`      | Chat bubble, `/assistant/*` API      | `/admin/assistant`                             |
 
 The core is always on: dashboard, users and roles, audit log, settings, brand and homepage editors, media library and the module manager.
 
@@ -31,6 +32,34 @@ Modules are compiled in with `InstalledModules` in `src/config.ts` and switched 
    | `PRIVATE_STRIPE_API_KEY`, `PRIVATE_STRIPE_WEBHOOK_SECRET` | Checkout and the subscription mirror behind Admin -> Subscriptions   |
    | `PRIVATE_CALENDLY_WEBHOOK_SIGNING_KEY`                    | The booking sync behind Admin -> Bookings                            |
 
+### Sign-in
+
+**Admin -> Sign-in** controls who can sign in and how. Changes apply straight away, no redeploy.
+
+| Setting              | Effect                                                                                                                              |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Let visitors sign in | Off hides the Sign in links and closes the customer portal. Staff still sign in at `/login/sign_in`. Sessions return if it reopens. |
+| Allow new accounts   | Off means existing accounts only, by any method                                                                                     |
+| Email and password   | Can be off only when a provider is on and your own account is connected to it                                                       |
+| Google, GitHub       | Each needs a client ID and client secret; the screen shows the exact callback URL to register and the steps                         |
+
+To add a provider, open its section on the screen, follow the steps, paste the two keys, tick the option and save. Then connect your own account in **Account -> Settings** to test the keys. Register a callback URL for each domain you use, for example `http://localhost:5173/auth/oauth/google/callback` and `https://YOUR_DOMAIN/auth/oauth/google/callback`.
+
+Behaviour worth knowing:
+
+- The first account can always be created, whatever the settings say, so a fresh install gets an owner.
+- A provider login never attaches itself to an existing account that has a password, because that address may never have been proven. The person signs in with their password and connects the provider from Account -> Settings. When password sign-in is off, the account is joined and its old password removed.
+- Only a verified email from the provider is accepted.
+- Accounts created through a provider have no password. They can set one in Account -> Settings.
+
+Client secrets are encrypted with AES-256-GCM, kept out of the settings the pages read, and never shown again. The key comes from `PRIVATE_SECRETS_KEY`, or a file at `data/secrets.key` created on the first save. Back that file up with the database, and on a host without a writable disk set `PRIVATE_SECRETS_KEY`. If the key is lost, the providers stop until the secrets are entered again. Environment variables `PRIVATE_GOOGLE_CLIENT_ID` and `PRIVATE_GOOGLE_CLIENT_SECRET` (and the GitHub pair) override the screen.
+
+If you are ever locked out, for example a provider's keys stop working while password sign-in is off:
+
+```sh
+./setup.sh signin:reset
+```
+
 ### Stripe webhook
 
 In Stripe, go to **Developers -> Webhooks -> Add endpoint**:
@@ -40,7 +69,42 @@ In Stripe, go to **Developers -> Webhooks -> Add endpoint**:
 
 Copy the signing secret into `PRIVATE_STRIPE_WEBHOOK_SECRET`. Each event is verified with Stripe's signature check and processed exactly once (see the `stripe_events` table).
 
-### Calendly
+### AI assistant
+
+A chat that answers from your own content. It lives in `packages/assistant`, a package with no Base Suite code in it; `src/lib/server/assistant.ts` is the one file connecting them. Details, and how to use it elsewhere or deploy it to Cloudflare, are in [packages/assistant/README.md](../packages/assistant/README.md).
+
+1. Switch on **AI assistant** in Admin -> Modules, then open **Admin -> AI assistant**.
+2. Your pages, posts, services, pricing and booking types are added to its knowledge by themselves and kept up to date; **Knowledge -> Import site content** does it straight away. **Embed new passages** turns on meaning-based search; the first run downloads the 34 MB Needle 3 weights to `data/needle/`.
+3. **Model settings:** add one or more providers with your keys, in the order to try them. With none, answers can only quote your content word for word.
+4. **Try it**, then tick **Chat is on** and choose who may use it.
+
+### Online booking
+
+Booking is built in and needs no outside service. Visitors pick a meeting type at `/book`, choose a time on a month calendar shown in their own time zone, and answer your questions.
+
+1. **Admin -> Bookings -> Availability:** set your time zone, weekly hours and date overrides (days off or one-off hours). This applies to every event type.
+2. **Admin -> Bookings -> Event types:** create the meetings you offer. Each has its own link, length, location, start-time interval, buffers, minimum notice, booking window, daily limit and questions.
+3. **Admin -> Settings -> Booking:** set how long before a meeting the reminder goes out.
+
+What happens after someone books:
+
+- They get a page with their meeting, Add to Google Calendar, a downloadable invite, Reschedule and Cancel. The link to it is private to them. Signed-in customers also reach it from My bookings.
+- With a mail provider set up (`PRIVATE_RESEND_API_KEY`, `PRIVATE_FROM_EMAIL`), they get a confirmation with a calendar invite, a notice when it moves or is cancelled, and a reminder. You get an alert at `PRIVATE_ADMIN_EMAIL`. Without one, booking still works but nobody is emailed, so check Admin -> Bookings.
+- The contact is added to the CRM with the booking on their timeline.
+- Staff can read answers, keep notes, reschedule, cancel and mark a no-show in Admin -> Bookings.
+
+Rules worth knowing:
+
+- A time can only be booked if the calendar would offer it. The check and the write happen together under a lock, so two people cannot take the same slot.
+- One email address can hold 5 upcoming meetings, and booking is rate limited per address.
+- The meeting link or address in an event type is only shown after booking.
+- Reminders run inside the app every 5 minutes. A host that freezes idle processes sends them late, never twice.
+
+Not included: syncing with Google or Outlook calendars (so outside appointments do not block times; add them as date overrides), creating Zoom or Meet links automatically (paste a fixed link in the event type), several hosts or round robin, group events, and taking payment.
+
+### Calendly (optional)
+
+If you already use Calendly you can also list its links on `/book`. Their meetings count as busy on your calendar once the webhook below is set.
 
 1. In **Admin -> Settings -> Booking**, add each event type's public link, for example `https://calendly.com/you/intro`. Only `https://calendly.com/...` links are accepted.
 2. To record bookings in the admin portal, create a webhook subscription. This needs a Calendly paid plan and a personal access token:
@@ -93,7 +157,7 @@ Each request passes through the following layers:
    - redirects or 404s anyone who isn't staff away from `/admin`
 2. **Every admin load and every form action** calls `requirePermission(event, "<permission>")`. Layout loads don't run for form actions, so each action checks for itself.
 3. **The database:** all access goes through server code with one handle. Writes happen after the permission check; customer portal reads go through `src/lib/server/portal.ts`, where every function takes the signed-in user's id. Tests on a fresh database assert the scoping with two users.
-4. **Accounts:** passwords are hashed with scrypt (node:crypto, no native dependency). Sign-in, sign-up and reset requests are rate limited per address. Changing the email or password and deleting the account all require the current password; a password change signs out every other session. Verification and reset links are one-time tokens that expire in hours.
+4. **Accounts:** provider sign-in uses the authorization code flow with PKCE and a one-time state cookie. Passwords are hashed with scrypt (node:crypto, no native dependency). Sign-in, sign-up and reset requests are rate limited per address, sign-in also per account, and password checks in the account pages per user. The first admin is made only by the first local sign-up or, on a deployed site, by a sign-up holding `PRIVATE_SETUP_CODE`; the last admin cannot delete their account. Changing the email or password and deleting the account all require the current password; a password change signs out every other session. Verification and reset links are one-time tokens that expire in hours.
 5. **Content Security Policy** is set in `svelte.config.js`:
    - no inline or third-party scripts; SvelteKit adds hashes for its own scripts
    - Calendly is allowed as a frame only
@@ -102,10 +166,10 @@ Each request passes through the following layers:
 Other protections:
 
 - **CMS content:** Markdown is rendered and sanitised once, at save time, with `sanitize-html` and a strict allow-list. `body_html` is never accepted from the client. Even a compromised editor account can't inject script.
-- **Media:** uploads are typed by file content (PNG, JPEG, WebP, GIF, AVIF only, never SVG), named by the server and served from `MEDIA_DIR` by `/media/<name>`; the name pattern is checked on every read and write so a path can never leave the folder.
+- **Media:** uploads are typed by file content (PNG, JPEG, WebP, GIF, AVIF only, never SVG), named by the server and served from `MEDIA_DIR` (or the R2 bucket on Cloudflare) by `/media/<name>`; the name pattern is checked on every read and write so a path can never leave the folder.
 - **Chat:** anonymous visitors are identified by a random 256-bit token in an `httpOnly`, `SameSite=Strict` cookie scoped to `/api/chat`. Only its SHA-256 hash is stored. The JSON endpoints check `Origin`, because SvelteKit's built-in CSRF check only covers form posts.
 - **Webhooks:** HMAC signatures are verified with a constant-time comparison. Calendly requests also get a 3-minute replay window. Payloads are size-capped and schema-validated with zod.
-- **Rate limits:** contact form, chat, sign-in, sign-up and password reset are limited per IP, per account or per conversation. Windows live in the database, so limits hold across instances. See `RATE_LIMITS` in `src/lib/server/security/rate_limit.ts`.
+- **Rate limits:** contact form, chat, sign-in, sign-up, password reset, search, page view counting and the AI assistant are limited per IP, per account or per conversation. Windows live in the database, so limits hold across instances. See `RATE_LIMITS` in `src/lib/server/security/rate_limit.ts`.
 - **Open redirects:** `?next=` targets are checked by `safeNextPath`.
 - **Audit log:** role changes, page publishes and deletes, settings changes, media changes, and contact and chat status changes are written to `audit_log` with the actor and IP.
 
@@ -130,17 +194,18 @@ Other protections:
 
 Everything visitors see is edited from the admin portal. No code changes or redeploys are needed.
 
-| Admin page                              | What it controls                                                                                                                     |
-| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| **Content -> Homepage**                 | Hero, stats, features, steps, testimonials, FAQ, closing call to action. Each section can be shown or hidden.                        |
-| **Content -> Pages**                    | Pages at `/<slug>` (About, Terms, Privacy, ...)                                                                                      |
-| **Content -> Blog**                     | Posts at `/blog/<slug>`: cover image, tags, author, scheduled publishing. RSS at `/blog/rss.xml`.                                    |
-| **Content -> Media**                    | Image uploads (PNG, JPEG, WebP, GIF, AVIF, up to 5 MB; checked by file content). Every image field has a "Choose from Media" picker. |
-| **Configuration -> Brand & navigation** | Site name, logo, colours (applied site-wide), header menu and button, footer columns, social links, announcement bar                 |
-| **Configuration -> Pricing plans**      | Plans, prices, features and Stripe price/product IDs. Checkout only ever uses a configured plan's price.                             |
+| Admin page                              | What it controls                                                                                                                                                                |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Content -> Homepage**                 | Hero, stats, features, steps, testimonials, FAQ, closing call to action. Each section can be shown or hidden.                                                                   |
+| **Content -> Pages**                    | Pages at `/<slug>` (About, Terms, Privacy, ...)                                                                                                                                 |
+| **Content -> Blog**                     | Posts at `/blog/<slug>`: cover image, tags, author, scheduled publishing. RSS at `/blog/rss.xml`.                                                                               |
+| **Content -> Media**                    | Image uploads (PNG, JPEG, WebP, GIF, AVIF, up to 5 MB; checked by file content). Every image field has a "Choose from Media" picker.                                            |
+| **Settings -> Contact form**            | Text beside the form, topics, whether to ask for company and phone, public phone, address and hours, automatic reply. A link like `/contact_us?topic=Sales` preselects a topic. |
+| **Configuration -> Brand & navigation** | Site name, logo, theme preset and colours (applied site-wide), header menu and button, footer columns, social links, announcement bar                                           |
+| **Configuration -> Pricing plans**      | Plans, prices, features and Stripe price/product IDs. Checkout only ever uses a configured plan's price.                                                                        |
 
 Editors can manage the homepage, pages, blog and media. Brand, pricing and settings are admin-only.
 
-Sample content (three posts and an About page) is inserted by `npm run db:seed` when the tables are empty; the text lives in `src/lib/server/db/seed.ts`.
+Sample content (three posts and an About page) is inserted by `npm run db:seed` when the tables are empty; the text lives in `src/lib/server/db/seed.ts`. `npm run db:seed -- agency|enterprise|portfolio` replaces it with a complete sample site, including theme, menus, homepage and module switches; see the README.
 
 If you self-host with `adapter-node`, set `BODY_SIZE_LIMIT=6M` so media uploads up to 5 MB are accepted.

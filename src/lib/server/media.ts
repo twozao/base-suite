@@ -1,6 +1,5 @@
-import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises"
-import { join } from "node:path"
 import { env } from "$env/dynamic/private"
+import { platformBindings } from "./platform"
 import { randomToken } from "./security/crypto"
 
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024
@@ -46,7 +45,7 @@ const CONTENT_TYPE_BY_EXT: Record<string, string> = Object.fromEntries(
 )
 
 export const MEDIA_NAME_RE =
-  /^[0-9]{13}-[A-Za-z0-9_-]{8}-[a-z0-9-]{1,60}\.(png|jpg|gif|webp|avif)$/
+  /^[0-9]{13}-[A-Za-z0-9_-]{8}-[a-z0-9-]{1,70}\.(png|jpg|gif|webp|avif)$/
 
 export const safeBaseName = (filename: string) =>
   (filename.split(/[\\/]/).pop() ?? "")
@@ -55,7 +54,8 @@ export const safeBaseName = (filename: string) =>
     .normalize("NFKD")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
-    .slice(0, 60) || "image"
+    .slice(0, 50)
+    .replace(/-+$/g, "") || "image"
 
 /** Validate type by content (not by the browser-supplied name/type). */
 export const detectImageType = (bytes: Uint8Array) =>
@@ -73,38 +73,89 @@ export const validateUpload = async (file: File) => {
   return { bytes, type, name }
 }
 
-// Uploads live on local disk (MEDIA_DIR, default data/uploads) and are served by /media/<name>.
-// Names are unique and validated by MEDIA_NAME_RE, so a path can never leave the directory.
+// Uploads live in the R2 bucket bound as MEDIA on Cloudflare, otherwise on local disk (MEDIA_DIR, default
+// data/uploads). Names are unique and validated by MEDIA_NAME_RE, so a path can never leave the directory.
 const mediaDir = () => env.MEDIA_DIR || "data/uploads"
+const bucket = () => platformBindings().MEDIA
+const disk = async () => {
+  const [fs, path] = await Promise.all([
+    import("node:fs/promises"),
+    import("node:path"),
+  ])
+  return { fs, at: (name: string) => path.join(mediaDir(), name) }
+}
 
 export const mediaUrl = (name: string) => `/media/${name}`
 
 export const saveMedia = async (name: string, bytes: Uint8Array) => {
   if (!MEDIA_NAME_RE.test(name)) throw new Error("Invalid media name")
-  await mkdir(mediaDir(), { recursive: true })
-  await writeFile(join(mediaDir(), name), bytes, { flag: "wx" })
+  const b = bucket()
+  if (b) {
+    const ext = name.slice(name.lastIndexOf(".") + 1)
+    await b.put(name, bytes, {
+      httpMetadata: { contentType: CONTENT_TYPE_BY_EXT[ext] },
+      onlyIf: { etagDoesNotMatch: "*" },
+    })
+    return
+  }
+  const { fs, at } = await disk()
+  await fs.mkdir(mediaDir(), { recursive: true })
+  await fs.writeFile(at(name), bytes, { flag: "wx" })
 }
 
 export const deleteMedia = async (name: string) => {
   if (!MEDIA_NAME_RE.test(name)) throw new Error("Invalid media name")
-  await rm(join(mediaDir(), name), { force: true })
+  const b = bucket()
+  if (b) return void (await b.delete(name))
+  const { fs, at } = await disk()
+  await fs.rm(at(name), { force: true })
 }
 
 export const readMedia = async (name: string) => {
   if (!MEDIA_NAME_RE.test(name)) return null
+  const ext = name.slice(name.lastIndexOf(".") + 1)
   try {
-    const bytes = await readFile(join(mediaDir(), name))
-    const ext = name.slice(name.lastIndexOf(".") + 1)
-    return { bytes, type: CONTENT_TYPE_BY_EXT[ext] }
+    const b = bucket()
+    if (b) {
+      const obj = await b.get(name)
+      return obj
+        ? {
+            bytes: new Uint8Array(await obj.arrayBuffer()),
+            type: CONTENT_TYPE_BY_EXT[ext],
+          }
+        : null
+    }
+    const { fs, at } = await disk()
+    return {
+      bytes: await fs.readFile(at(name)),
+      type: CONTENT_TYPE_BY_EXT[ext],
+    }
   } catch {
     return null
   }
 }
 
+const LIST_LIMIT = 500
+
 export const listMedia = async () => {
+  const b = bucket()
+  if (b) {
+    const listed = await b.list({ limit: LIST_LIMIT })
+    const files = listed.objects
+      .filter((o) => MEDIA_NAME_RE.test(o.key))
+      .map((o) => ({
+        name: o.key,
+        size: o.size,
+        createdAt: o.uploaded.toISOString(),
+        url: mediaUrl(o.key),
+      }))
+      .sort((x, y) => y.name.localeCompare(x.name))
+    return { files, error: null }
+  }
+  const { fs, at } = await disk()
   let names: string[]
   try {
-    names = await readdir(mediaDir())
+    names = await fs.readdir(mediaDir())
   } catch {
     return { files: [], error: null }
   }
@@ -113,9 +164,9 @@ export const listMedia = async () => {
       .filter((n) => MEDIA_NAME_RE.test(n))
       .sort()
       .reverse()
-      .slice(0, 500)
+      .slice(0, LIST_LIMIT)
       .map(async (name) => {
-        const s = await stat(join(mediaDir(), name))
+        const s = await fs.stat(at(name))
         return {
           name,
           size: s.size,
@@ -125,4 +176,41 @@ export const listMedia = async () => {
       }),
   )
   return { files, error: null }
+}
+
+/** Resized copies made at upload are stored as <original stem>-w<width>.webp. */
+export const VARIANT_RE = /-w(\d{2,4})\.webp$/
+
+/** Copies an image from an outside address into the media library. Returns the new name or an error. */
+export const importImage = async (
+  db: import("./db").Db,
+  url: string,
+): Promise<{ name: string } | { error: string }> => {
+  const { fetchPublic } = await import("./security/outbound")
+  const { imageSize } = await import("./image_size")
+  const r = await fetchPublic(url, {
+    maxBytes: MAX_UPLOAD_BYTES,
+    timeoutMs: 15_000,
+  })
+  if (!r.ok) return { error: r.error }
+  if (!r.res.ok) return { error: `The address answered ${r.res.status}` }
+  const type = detectImageType(r.bytes.slice(0, 16))
+  if (!type)
+    return { error: "That address is not a PNG, JPEG, WebP, GIF or AVIF image" }
+  const base = new URL(url).pathname.split("/").pop() ?? "image"
+  const name = `${Date.now()}-${randomToken(6).slice(0, 8)}-${safeBaseName(base)}.${TYPES[type].ext}`
+  await saveMedia(name, r.bytes)
+  const size = imageSize(r.bytes)
+  await db
+    .insertInto("media")
+    .values({
+      name,
+      size: r.bytes.byteLength,
+      width: size?.width ?? null,
+      height: size?.height ?? null,
+      source_url: url.slice(0, 1000),
+    })
+    .onConflict((oc) => oc.column("name").doNothing())
+    .execute()
+  return { name }
 }

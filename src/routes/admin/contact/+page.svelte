@@ -35,6 +35,7 @@
           <span class="text-sm opacity-60 truncate">{r.email}</span>
         </div>
         <p class="text-sm opacity-80 truncate">
+          {#if r.topic}<span class="font-medium">{r.topic}:</span>{/if}
           {r.message_body || "(no message)"}
         </p>
       </div>

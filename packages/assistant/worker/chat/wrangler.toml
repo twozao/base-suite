@@ -1,0 +1,26 @@
+name = "assistant-chat"
+main = "index.ts"
+compatibility_date = "2026-10-01"
+compatibility_flags = ["nodejs_compat"]
+
+# The admin and widget scripts are served as text.
+[[rules]]
+type = "Text"
+globs = ["**/ui/*.js"]
+fallthrough = true
+
+[ai]
+binding = "AI"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "assistant"
+# Replace with the id from: wrangler d1 create assistant
+database_id = "00000000-0000-0000-0000-000000000000"
+
+[[services]]
+binding = "NEEDLE"
+service = "assistant-needle"
+
+[vars]
+ALLOWED_ORIGINS = ""

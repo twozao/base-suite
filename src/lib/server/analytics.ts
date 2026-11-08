@@ -1,5 +1,5 @@
 // Privacy-friendly analytics helpers. We store only (day, path) and
-// (day, referrer host) counters — no IPs, cookies, user ids or user agents.
+// (day, referrer host) counters - no IPs, cookies, user ids or user agents.
 
 const BOT_RE =
   /bot|crawl|spider|slurp|preview|headless|lighthouse|pingdom|monitor|curl|wget|python|http-client/i

@@ -1,13 +1,55 @@
 <script lang="ts">
   import "../../app.css"
   import { page } from "$app/stores"
+  import { onMount } from "svelte"
+  import { activeNavHref } from "$lib/modules"
   import StatusBadge from "$lib/components/admin/StatusBadge.svelte"
 
   let { data, children } = $props()
   let drawerOpen = $state(false)
 
-  const isActive = (href: string, path: string) =>
-    href === "/admin" ? path === "/admin" : path.startsWith(href)
+  // Groups fold so a site with many modules stays readable; the choice is remembered per browser.
+  const COLLAPSED_KEY = "admin-nav-collapsed"
+  const FOLD_ABOVE = 14
+  const activeHref = $derived(
+    activeNavHref(
+      data.nav.map((i) => i.href),
+      $page.url.pathname,
+    ),
+  )
+  const groups = $derived.by(() => {
+    const out: { name: string; items: typeof data.nav }[] = []
+    // One section per group, in the order groups first appear, wherever their items are listed.
+    for (const item of data.nav) {
+      const g = out.find((x) => x.name === item.group)
+      if (g) g.items.push(item)
+      else out.push({ name: item.group, items: [item] })
+    }
+    return out
+  })
+  let userChoice = $state<Record<string, boolean>>({})
+  onMount(() => {
+    try {
+      userChoice = JSON.parse(localStorage.getItem(COLLAPSED_KEY) ?? "{}")
+    } catch {
+      /* private window or blocked storage */
+    }
+  })
+  const isOpen = (group: { name: string; items: { href: string }[] }) => {
+    if (group.name === "Overview") return true
+    if (group.items.some((i) => i.href === activeHref)) return true
+    return userChoice[group.name] ?? data.nav.length <= FOLD_ABOVE
+  }
+  const toggle = (group: { name: string; items: { href: string }[] }) => {
+    userChoice = { ...userChoice, [group.name]: !isOpen(group) }
+    try {
+      localStorage.setItem(COLLAPSED_KEY, JSON.stringify(userChoice))
+    } catch {
+      /* private window or blocked storage */
+    }
+  }
+  const badgeTotal = (items: { href: string }[]) =>
+    items.reduce((n, i) => n + (data.badges[i.href] ?? 0), 0)
 </script>
 
 <svelte:head>
@@ -62,41 +104,66 @@
         >
       </div>
       <ul class="menu w-full grow gap-0.5 p-3">
-        {#each data.nav as item, i}
-          {#if item.group !== "Overview" && item.group !== data.nav[i - 1]?.group}
-            <li class="menu-title mt-3 text-xs uppercase tracking-wider">
-              {item.group}
+        {#each groups as group (group.name)}
+          {@const open = isOpen(group)}
+          {#if group.name !== "Overview"}
+            <li class="mt-2">
+              <button
+                type="button"
+                class="flex w-full items-center justify-between text-xs uppercase tracking-wider text-base-content/60"
+                aria-expanded={open}
+                onclick={() => toggle(group)}
+              >
+                <span>{group.name}</span>
+                <span class="flex items-center gap-2">
+                  {#if !open && badgeTotal(group.items)}
+                    <span class="badge badge-xs badge-primary"
+                      >{badgeTotal(group.items)}</span
+                    >
+                  {/if}
+                  <svg
+                    class="h-3.5 w-3.5 transition-transform {open
+                      ? 'rotate-90'
+                      : ''}"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    stroke-width="2.5"
+                    aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg
+                  >
+                </span>
+              </button>
             </li>
           {/if}
-          <li>
-            <a
-              href={item.href}
-              class={isActive(item.href, $page.url.pathname)
-                ? "menu-active"
-                : ""}
-              aria-current={isActive(item.href, $page.url.pathname)
-                ? "page"
-                : undefined}
-              onclick={() => (drawerOpen = false)}
-            >
-              <svg
-                class="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                stroke-width="1.8"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"><path d={item.icon} /></svg
-              >
-              {item.label}
-              {#if data.badges[item.href]}
-                <span class="badge badge-sm badge-primary ml-auto"
-                  >{data.badges[item.href]}</span
+          {#if open}
+            {#each group.items as item (item.href)}
+              <li>
+                <a
+                  href={item.href}
+                  class={item.href === activeHref ? "side-nav-active" : ""}
+                  aria-current={item.href === activeHref ? "page" : undefined}
+                  onclick={() => (drawerOpen = false)}
                 >
-              {/if}
-            </a>
-          </li>
+                  <svg
+                    class="h-5 w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"><path d={item.icon} /></svg
+                  >
+                  {item.label}
+                  {#if data.badges[item.href]}
+                    <span class="badge badge-sm badge-primary ml-auto"
+                      >{data.badges[item.href]}</span
+                    >
+                  {/if}
+                </a>
+              </li>
+            {/each}
+          {/if}
         {/each}
       </ul>
       <div class="p-4 border-t border-base-300 text-sm space-y-2">

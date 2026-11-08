@@ -42,6 +42,6 @@ describe("renderMarkdown", () => {
 
 describe("excerptFrom", () => {
   it("strips tags and truncates", () => {
-    expect(excerptFrom("<p>Hello <b>world</b></p>", 8)).toBe("Hello w…")
+    expect(excerptFrom("<p>Hello <b>world</b></p>", 8)).toBe("Hello w...")
   })
 })

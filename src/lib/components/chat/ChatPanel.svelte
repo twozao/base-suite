@@ -17,11 +17,15 @@
     messages?: Message[]
   }
 
-  let { onclose }: { onclose: () => void } = $props()
+  let {
+    onclose,
+    initialDraft = "",
+  }: { onclose: () => void; initialDraft?: string } = $props()
 
   let chat: ChatState | null = $state(null)
   let messages: Message[] = $state([])
-  let draft = $state("")
+  // svelte-ignore state_referenced_locally
+  let draft = $state(initialDraft)
   let name = $state("")
   let email = $state("")
   let sending = $state(false)
@@ -143,7 +147,7 @@
     <button
       class="btn btn-ghost btn-sm btn-circle"
       aria-label="Close chat"
-      onclick={onclose}>✕</button
+      onclick={onclose}>x</button
     >
   </header>
 
@@ -181,7 +185,7 @@
             {m.body}
           </div>
           <div class="chat-footer opacity-60 text-xs">
-            {m.sender === "staff" ? "Support · " : ""}{time(m.created_at)}
+            {m.sender === "staff" ? "Support - " : ""}{time(m.created_at)}
           </div>
         </div>
       {/each}
@@ -216,7 +220,7 @@
       <div class="flex gap-2">
         <textarea
           class="textarea textarea-sm grow min-h-10 h-10 resize-none"
-          placeholder="Type your message…"
+          placeholder="Type your message..."
           maxlength="4000"
           aria-label="Message"
           bind:value={draft}
@@ -231,7 +235,7 @@
           class="btn btn-primary btn-sm h-10"
           disabled={sending || !draft.trim()}
         >
-          {sending ? "…" : "Send"}
+          {sending ? "..." : "Send"}
         </button>
       </div>
     </form>

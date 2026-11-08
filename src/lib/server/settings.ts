@@ -1,3 +1,4 @@
+import { LOCALE_CODES } from "$lib/i18n"
 import { z } from "zod"
 import type { Db } from "./db"
 import { nowIso, parseJson } from "./db/json"
@@ -12,6 +13,7 @@ import {
   DEFAULT_HOME,
   DEFAULT_PRICING,
 } from "./content_schema"
+import { availabilitySchema, DEFAULT_AVAILABILITY } from "../booking/slots"
 
 // Every runtime-editable setting is declared here with a schema and default. Unknown keys in the
 // database are ignored; invalid values fall back to the default, so a bad row can never break the site.
@@ -28,7 +30,68 @@ export const calendlyUrl = httpsUrl.refine(
   "Must be a calendly.com scheduling link",
 )
 
+const signinProvider = z
+  .object({ enabled: z.boolean(), clientId: z.string().trim().max(300) })
+  .default({ enabled: false, clientId: "" })
+
+const contactDefaults = {
+  notifyAdmin: true,
+  successMessage: "Thanks! We'll get back to you soon.",
+  intro:
+    "Questions, a quote or a demo - send us a message and we'll get back to you, usually within one business day.",
+  topics: ["General question", "Sales", "Support"],
+  askPhone: true,
+  askCompany: true,
+  autoReply: true,
+  phone: "",
+  address: "",
+  hours: "",
+}
+
+const sla = (firstResponseHours: number, resolveHours: number) =>
+  z
+    .object({
+      firstResponseHours: z.number().min(0.25).max(720),
+      resolveHours: z.number().min(0.25).max(2160),
+    })
+    .default({ firstResponseHours, resolveHours })
+
 export const settingsSchema = {
+  helpdesk: z
+    .object({
+      slas: z.object({
+        low: sla(48, 240),
+        normal: sla(24, 120),
+        high: sla(8, 48),
+        urgent: sla(1, 8),
+      }),
+      autoFromContact: z.boolean(),
+    })
+    .default({
+      slas: {
+        low: { firstResponseHours: 48, resolveHours: 240 },
+        normal: { firstResponseHours: 24, resolveHours: 120 },
+        high: { firstResponseHours: 8, resolveHours: 48 },
+        urgent: { firstResponseHours: 1, resolveHours: 8 },
+      },
+      autoFromContact: false,
+    }),
+  availability: availabilitySchema.default(DEFAULT_AVAILABILITY),
+  signin: z
+    .object({
+      enabled: z.boolean(),
+      allowSignUp: z.boolean(),
+      password: z.boolean(),
+      google: signinProvider,
+      github: signinProvider,
+    })
+    .default({
+      enabled: true,
+      allowSignUp: true,
+      password: true,
+      google: { enabled: false, clientId: "" },
+      github: { enabled: false, clientId: "" },
+    }),
   modules: z
     .object({ switches: z.record(z.string().max(40), z.boolean()) })
     .default({ switches: {} }),
@@ -61,6 +124,9 @@ export const settingsSchema = {
     .object({
       enabled: z.boolean(),
       intro: z.string().trim().max(500),
+      /** Hours before a meeting to email a reminder; 0 turns reminders off. */
+      reminderHours: z.number().int().min(0).max(168).default(24),
+      /** Optional links to meetings hosted on Calendly, shown under the native event types. */
       eventTypes: z
         .array(
           z.object({
@@ -75,17 +141,70 @@ export const settingsSchema = {
     .default({
       enabled: true,
       intro: "Pick a time that works for you.",
+      reminderHours: 24,
       eventTypes: [],
     }),
+  blog: z
+    .object({
+      title: z.string().trim().min(1).max(60),
+      intro: z.string().trim().max(300),
+    })
+    .default({ title: "Blog", intro: "News, guides and updates." }),
+  // Field defaults keep rows saved before these options existed valid.
   contact: z
     .object({
       notifyAdmin: z.boolean(),
       successMessage: z.string().trim().min(1).max(300),
+      intro: z.string().trim().max(500).default(contactDefaults.intro),
+      topics: z
+        .array(z.string().trim().min(1).max(120))
+        .max(12)
+        .default(contactDefaults.topics),
+      askPhone: z.boolean().default(true),
+      askCompany: z.boolean().default(true),
+      autoReply: z.boolean().default(true),
+      phone: z.string().trim().max(60).default(""),
+      address: z.string().trim().max(300).default(""),
+      hours: z.string().trim().max(120).default(""),
+    })
+    .default(contactDefaults),
+  security: z
+    .object({
+      /** Staff must turn on two-step sign-in before they can use the admin. */
+      requireStaff2fa: z.boolean(),
+    })
+    .default({ requireStaff2fa: false }),
+  comments: z
+    .object({
+      enabled: z.boolean(),
+      /** New comments wait for a moderator unless the writer is signed in staff. */
+      requireApproval: z.boolean(),
+      /** Comments close this many days after a post is published; 0 keeps them open. */
+      closeAfterDays: z.number().int().min(0).max(3650),
+      notifyAdmin: z.boolean(),
     })
     .default({
+      enabled: false,
+      requireApproval: true,
+      closeAfterDays: 0,
       notifyAdmin: true,
-      successMessage: "Thanks! We'll get back to you soon.",
     }),
+  i18n: z
+    .object({
+      defaultLocale: z.string().refine((v) => LOCALE_CODES.includes(v)),
+      /** Every language the site offers, the default included. */
+      locales: z
+        .array(z.string().refine((v) => LOCALE_CODES.includes(v)))
+        .min(1)
+        .max(10),
+    })
+    .default({ defaultLocale: "en", locales: ["en"] }),
+  seo: z
+    .object({
+      /** Organization and breadcrumb structured data on every page (SEO pack extension). */
+      structuredData: z.boolean(),
+    })
+    .default({ structuredData: false }),
 }
 
 export type SettingKey = keyof typeof settingsSchema
@@ -146,7 +265,8 @@ export const saveSetting = async <K extends SettingKey>(
   db: Db,
   key: K,
   value: Settings[K],
-  userId: string,
+  /** null when written by a seed script rather than a signed-in admin */
+  userId: string | null,
 ) => {
   const parsed = settingsSchema[key].parse(value)
   const row = {

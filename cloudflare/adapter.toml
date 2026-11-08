@@ -1,0 +1,9 @@
+# Read only by the SvelteKit adapter at build time: where it writes the Worker and the static files.
+# Deploys use wrangler.toml, whose entry (cloudflare/worker.js) wraps this Worker.
+name = "base-suite-build"
+main = "../.svelte-kit/cloudflare/_worker.js"
+compatibility_date = "2026-10-01"
+
+[assets]
+directory = "../.svelte-kit/cloudflare"
+binding = "ASSETS"

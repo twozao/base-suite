@@ -1,4 +1,5 @@
 import { nowIso } from "$lib/server/db/json"
+import { getSettings } from "$lib/server/settings"
 import {
   TAG_RE,
   countPublishedPosts,
@@ -19,10 +20,12 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   const from = (page - 1) * PAGE_SIZE
   const db = locals.db
   const now = nowIso()
+  const blog = (await getSettings(db)).blog
 
   // A tag that could never have been saved matches nothing; skip the query.
   if (tag && !TAG_RE.test(tag)) {
     return {
+      blog,
       posts: [],
       total: 0,
       page,
@@ -39,6 +42,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   ])
 
   return {
+    blog,
     posts,
     total,
     page,

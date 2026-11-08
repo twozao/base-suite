@@ -1,0 +1,14 @@
+# The Needle 3 engine, in its own Worker so it can never take the chat down.
+name = "assistant-needle"
+main = "index.ts"
+compatibility_date = "2026-10-01"
+
+# Reached only through the chat Worker's service binding.
+workers_dev = false
+
+[limits]
+cpu_ms = 30000
+
+[[r2_buckets]]
+binding = "WEIGHTS"
+bucket_name = "assistant-needle-weights"

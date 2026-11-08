@@ -4,6 +4,7 @@
   import PageEditor from "$lib/components/admin/PageEditor.svelte"
   import Flash from "$lib/components/admin/Flash.svelte"
   import { formatDateTime } from "$lib/format"
+  import { parseBlocks } from "$lib/blocks"
   let { data, form } = $props()
   const p = $derived(data.page)
 </script>
@@ -17,7 +18,7 @@
     {#if p.status === "published"}<a
         class="btn btn-sm"
         href="/{p.slug}"
-        target="_blank">View live ↗</a
+        target="_blank">View live</a
       >{/if}
   {/snippet}
 </PageHeader>
@@ -37,9 +38,13 @@
   <PageEditor
     action="?/save"
     values={form && "values" in form && form.values ? form.values : p}
+    blocks={form && "values" in form && form.values
+      ? parseBlocks(form.values.blocks)
+      : data.blocks}
     errors={form && "errors" in form ? form.errors : {}}
-    canPublish={data.canPublish}
+    canPublish={data.access.canPublish}
     status={p.status}
+    reviewRequested={p.review_requested_at}
   />
 {/key}
 
@@ -51,7 +56,7 @@
         {#each data.revisions as r, i (r.id)}
           <li class="flex items-center justify-between py-2 text-sm">
             <span
-              >{formatDateTime(r.created_at)} · {r.title}{i === 0
+              >{formatDateTime(r.created_at)} - {r.title}{i === 0
                 ? " (latest)"
                 : ""}</span
             >
@@ -66,7 +71,7 @@
       </ul>
     </div>
   </section>
-  {#if data.canPublish}
+  {#if data.access.canDelete}
     <section class="card bg-base-100 border border-error/30">
       <div class="card-body gap-3">
         <h2 class="card-title text-base">Danger zone</h2>

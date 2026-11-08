@@ -23,7 +23,7 @@
   {#if form?.section === section}
     {#if form.error}<p class="text-error text-sm" role="alert">{form.error}</p>
     {:else if form.message}<p class="text-success text-sm" role="status">
-        ✓ {form.message}
+        {form.message}
       </p>{/if}
   {/if}
 {/snippet}
@@ -38,6 +38,46 @@
     Site name, logo, colours, menus and the announcement bar are in
     <a class="link" href="/admin/site">Brand & navigation</a>.
   </p>
+
+  {#if data.modules.cms}
+    <form
+      id="blog"
+      method="POST"
+      action="?/blog"
+      use:enhance={keep}
+      class="card bg-base-100 border border-base-300"
+    >
+      <div class="card-body gap-4">
+        <h2 class="card-title">Blog</h2>
+        <label class="block"
+          ><span class="label text-sm whitespace-normal mb-1"
+            >Title (shown at /blog, for example Blog, Newsroom, Writing)</span
+          >
+          <input
+            class="input w-full"
+            name="title"
+            value={data.settings.blog.title}
+            maxlength="60"
+            required
+          /></label
+        >
+        <label class="block"
+          ><span class="label text-sm whitespace-normal mb-1">Intro line</span>
+          <input
+            class="input w-full"
+            name="intro"
+            value={data.settings.blog.intro}
+            maxlength="300"
+          /></label
+        >
+        <div class="flex items-center gap-4">
+          <button class="btn btn-primary btn-sm">Save</button>{@render status(
+            "blog",
+          )}
+        </div>
+      </div>
+    </form>
+  {/if}
 
   {#if data.modules.chat}
     <form
@@ -76,7 +116,7 @@
             name="offlineMessage"
             value={data.settings.chat.offlineMessage}
             maxlength="300"
-            placeholder="e.g. We're online Mon–Fri, 9am–5pm CET"
+            placeholder="e.g. We're online Mon-Fri, 9am-5pm CET"
           /></label
         >
         <label class="flex items-center gap-3"
@@ -113,7 +153,25 @@
       class="card bg-base-100 border border-base-300"
     >
       <div class="card-body gap-4">
-        <h2 class="card-title">Booking (Calendly)</h2>
+        <h2 class="card-title">Booking</h2>
+        <p class="text-sm text-base-content/70">
+          Meeting types and hours are in
+          <a class="link" href="/admin/bookings/event-types">Event types</a> and
+          <a class="link" href="/admin/bookings/availability">Availability</a>.
+        </p>
+        <label class="block"
+          ><span class="label text-sm whitespace-normal mb-1"
+            >Reminder email, hours before the meeting (0 for none)</span
+          >
+          <input
+            class="input w-32"
+            type="number"
+            min="0"
+            max="168"
+            name="reminderHours"
+            value={data.settings.booking.reminderHours}
+          /></label
+        >
         <label class="flex items-center gap-3"
           ><input
             type="checkbox"
@@ -132,7 +190,7 @@
         >
         <div class="space-y-3">
           <span class="label text-sm whitespace-normal"
-            >Event types (copy each link from Calendly → Event types → Copy
+            >Event types (copy each link from Calendly -> Event types -> Copy
             link)</span
           >
           {#each eventTypes as t, i}
@@ -216,6 +274,77 @@
             name="notifyAdmin"
             checked={data.settings.contact.notifyAdmin}
           /> Email the admin address for each new message</label
+        >
+        <label class="flex items-center gap-3"
+          ><input
+            type="checkbox"
+            class="checkbox checkbox-sm"
+            name="autoReply"
+            checked={data.settings.contact.autoReply}
+          /> Send an automatic reply (needs a mail provider)</label
+        >
+        <label class="flex items-center gap-3"
+          ><input
+            type="checkbox"
+            class="checkbox checkbox-sm"
+            name="askCompany"
+            checked={data.settings.contact.askCompany}
+          /> Ask for a company</label
+        >
+        <label class="flex items-center gap-3"
+          ><input
+            type="checkbox"
+            class="checkbox checkbox-sm"
+            name="askPhone"
+            checked={data.settings.contact.askPhone}
+          /> Ask for a phone number and how they prefer to be reached</label
+        >
+        <label class="block"
+          ><span class="label text-sm whitespace-normal mb-1"
+            >Text beside the form</span
+          >
+          <textarea
+            class="textarea w-full"
+            rows="2"
+            name="intro"
+            maxlength="500">{data.settings.contact.intro}</textarea
+          ></label
+        >
+        <label class="block"
+          ><span class="label text-sm whitespace-normal mb-1"
+            >Topics, one per line (leave empty to not ask)</span
+          >
+          <textarea class="textarea w-full" rows="4" name="topics"
+            >{data.settings.contact.topics.join("\n")}</textarea
+          ></label
+        >
+        <label class="block"
+          ><span class="label text-sm whitespace-normal mb-1">Public phone</span
+          >
+          <input
+            class="input w-full"
+            name="phone"
+            maxlength="60"
+            value={data.settings.contact.phone}
+          /></label
+        >
+        <label class="block"
+          ><span class="label text-sm whitespace-normal mb-1">Address</span>
+          <input
+            class="input w-full"
+            name="address"
+            maxlength="300"
+            value={data.settings.contact.address}
+          /></label
+        >
+        <label class="block"
+          ><span class="label text-sm whitespace-normal mb-1">Hours</span>
+          <input
+            class="input w-full"
+            name="hours"
+            maxlength="120"
+            value={data.settings.contact.hours}
+          /></label
         >
         <label class="block"
           ><span class="label text-sm whitespace-normal mb-1"

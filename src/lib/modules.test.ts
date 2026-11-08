@@ -11,3 +11,12 @@ describe("resolveActive", () => {
     expect([...resolveActive({ helpdesk: true })]).not.toContain("helpdesk")
   })
 })
+
+describe("admin menu", () => {
+  it("has a place in the menu order for every item", async () => {
+    const { ALL_ADMIN_NAV, NAV_ORDER } = await import("./modules")
+    expect(
+      ALL_ADMIN_NAV.map((i) => i.href).filter((h) => !NAV_ORDER.includes(h)),
+    ).toEqual([])
+  })
+})

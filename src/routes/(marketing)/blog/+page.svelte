@@ -12,11 +12,13 @@
 
 <svelte:head>
   <title
-    >{data.tag ? `${data.tag} · ` : ""}Blog | {data.site.brand.siteName}</title
+    >{data.tag ? `${data.tag} - ` : ""}{data.blog.title} | {data.site.brand
+      .siteName}</title
   >
   <meta
     name="description"
-    content="News, guides and updates from {data.site.brand.siteName}."
+    content={data.blog.intro ||
+      `${data.blog.title} from ${data.site.brand.siteName}.`}
   />
   <link
     rel="alternate"
@@ -30,12 +32,16 @@
   <div class="mx-auto max-w-6xl px-4 sm:px-6 pt-16 pb-10 sm:pt-20">
     <div class="flex flex-wrap items-end justify-between gap-4">
       <div>
-        <h1 class="text-4xl sm:text-5xl font-bold tracking-tight">Blog</h1>
-        <p class="mt-3 text-lg text-base-content/70">
-          News, guides and updates from {data.site.brand.siteName}.
-        </p>
+        <h1 class="text-4xl sm:text-5xl font-bold tracking-tight">
+          {data.blog.title}
+        </h1>
+        {#if data.blog.intro}
+          <p class="mt-3 text-lg text-base-content/70">{data.blog.intro}</p>
+        {/if}
       </div>
-      <a href="/blog/rss.xml" class="btn btn-ghost btn-sm">RSS feed</a>
+      <a href="/blog/rss.xml" data-sveltekit-reload class="btn btn-ghost btn-sm"
+        >RSS feed</a
+      >
     </div>
     {#if data.tags.length}
       <nav class="mt-8 flex flex-wrap gap-2" aria-label="Filter by tag">
@@ -68,14 +74,14 @@
       <nav class="mt-12 flex justify-center gap-2" aria-label="Pagination">
         {#if data.page > 1}<a
             class="btn btn-outline"
-            href={pageHref(data.page - 1)}>← Newer</a
+            href={pageHref(data.page - 1)}>Newer</a
           >{/if}
         <span class="btn btn-ghost no-animation cursor-default"
           >Page {data.page} of {data.pages}</span
         >
         {#if data.page < data.pages}<a
             class="btn btn-outline"
-            href={pageHref(data.page + 1)}>Older →</a
+            href={pageHref(data.page + 1)}>Older -></a
           >{/if}
       </nav>
     {/if}
@@ -84,8 +90,8 @@
       class="rounded-box border border-dashed border-base-300 p-16 text-center text-base-content/60"
     >
       {data.tag
-        ? `No posts tagged “${data.tag}” yet.`
-        : "No posts yet — check back soon."}
+        ? `No posts tagged "${data.tag}" yet.`
+        : "No posts yet - check back soon."}
     </div>
   {/if}
 </div>

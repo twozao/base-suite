@@ -18,8 +18,8 @@
 {#if shown?.done}
   <p class="text-sm {compact ? '' : 'text-base'}" role="status">
     {shown.confirmed
-      ? "Thanks — you're subscribed! 🎉"
-      : "Almost there — check your inbox to confirm. ✉️"}
+      ? "Thanks - you're subscribed!"
+      : "Almost there - check your inbox to confirm."}
   </p>
 {:else}
   <form
@@ -52,7 +52,7 @@
       class="input {compact ? 'input-sm' : ''} w-full sm:w-72"
     />
     <button class="btn btn-primary {compact ? 'btn-sm' : ''}" disabled={busy}
-      >{busy ? "…" : "Subscribe"}</button
+      >{busy ? "..." : "Subscribe"}</button
     >
   </form>
   {#if shown?.error}<p class="text-error text-sm mt-2" role="alert">

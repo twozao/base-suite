@@ -11,7 +11,7 @@
 <section class="min-h-[60vh] grid place-items-center px-4 py-20 text-center">
   <div class="max-w-md">
     <h1 class="text-3xl font-bold">
-      {data.ok ? "You're subscribed 🎉" : "Link expired"}
+      {data.ok ? "You're subscribed" : "Link expired"}
     </h1>
     <p class="mt-3 text-base-content/70">
       {data.ok

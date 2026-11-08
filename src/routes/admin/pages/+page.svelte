@@ -43,7 +43,7 @@
             {#if p.status === "published"}<a
                 class="font-mono text-sm link"
                 href="/{p.slug}"
-                target="_blank">/{p.slug} ↗</a
+                target="_blank">/{p.slug}</a
               >
             {:else}<span class="font-mono text-sm opacity-60">/{p.slug}</span
               >{/if}

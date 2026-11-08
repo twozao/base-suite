@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { emit } from "./plugins/events"
 import { env } from "$env/dynamic/private"
 import type { RequestEvent } from "@sveltejs/kit"
 import { nowIso } from "./db/json"
@@ -63,6 +64,10 @@ export const subscribe = async (
       .insertInto("newsletter_subscribers")
       .values({ id: crypto.randomUUID(), ...row })
       .execute()
+    await emit(db, "newsletter.subscribed", {
+      email: input.email,
+      confirmed: !doubleOptIn,
+    })
   }
 
   if (doubleOptIn) {

@@ -1,5 +1,6 @@
 import { sql } from "kysely"
-import { openDb, migrateToLatest, type Db } from "./index"
+import { migrateToLatest, type Db } from "./index"
+import { openDb } from "./node"
 
 // A fresh, migrated database for a test: in-memory SQLite, or the throwaway Postgres database in
 // TEST_DATABASE_URL (its public schema is dropped first, so never point it at real data).

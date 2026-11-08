@@ -45,6 +45,20 @@
         show: site?.modules.booking,
       },
       {
+        id: "tickets",
+        href: "/account/tickets",
+        label: "Tickets",
+        icon: "document",
+        show: site?.modules.helpdesk,
+      },
+      {
+        id: "projects",
+        href: "/account/projects",
+        label: "Projects",
+        icon: "layers",
+        show: site?.modules.projects,
+      },
+      {
         id: "support",
         href: "/account/support",
         label: "Support",
@@ -108,7 +122,7 @@
           <li>
             <a
               href={item.href}
-              class={adminSection === item.id ? "menu-active" : ""}
+              class={adminSection === item.id ? "side-nav-active" : ""}
               aria-current={adminSection === item.id ? "page" : undefined}
               onclick={() => (drawerOpen = false)}
             >

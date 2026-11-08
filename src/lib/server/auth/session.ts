@@ -12,10 +12,15 @@ export type SessionUser = {
   emailVerified: boolean
   createdAt: string
 }
-export type SessionInfo = { id: string; expiresAt: string }
+export type SessionInfo = { id: string; expiresAt: string; mfa: boolean }
+const SEEN_EVERY_MS = 10 * 60 * 1000
 
 // The browser holds a random token; only its SHA-256 is stored, so a database read cannot be replayed as a login.
-export const createSession = async (db: Db, userId: string) => {
+export const createSession = async (
+  db: Db,
+  userId: string,
+  opts: { mfa?: boolean; userAgent?: string | null } = {},
+) => {
   const token = randomToken()
   const expiresAt = new Date(Date.now() + SESSION_MS).toISOString()
   await db
@@ -24,6 +29,9 @@ export const createSession = async (db: Db, userId: string) => {
       id: await sha256Hex(token),
       user_id: userId,
       expires_at: expiresAt,
+      mfa: opts.mfa ? 1 : 0,
+      user_agent: opts.userAgent?.slice(0, 300) ?? null,
+      last_seen_at: new Date().toISOString(),
     })
     .execute()
   return { token, expiresAt }
@@ -46,6 +54,8 @@ export const validateSession = async (
     .select([
       "sessions.id as id",
       "sessions.expires_at as expires_at",
+      "sessions.mfa as mfa",
+      "sessions.last_seen_at as last_seen_at",
       "users.id as user_id",
       "users.email as email",
       "users.email_verified as email_verified",
@@ -61,17 +71,21 @@ export const validateSession = async (
   }
   let expiresAt = row.expires_at
   let renewed = false
-  if (expiresMs - Date.now() < RENEW_BEFORE_MS) {
-    expiresAt = new Date(Date.now() + SESSION_MS).toISOString()
+  const renew = expiresMs - Date.now() < RENEW_BEFORE_MS
+  const seenStale =
+    !row.last_seen_at ||
+    Date.now() - Date.parse(row.last_seen_at) > SEEN_EVERY_MS
+  if (renew || seenStale) {
+    if (renew) expiresAt = new Date(Date.now() + SESSION_MS).toISOString()
     await db
       .updateTable("sessions")
-      .set({ expires_at: expiresAt })
+      .set({ expires_at: expiresAt, last_seen_at: new Date().toISOString() })
       .where("id", "=", id)
       .execute()
-    renewed = true
+    renewed = renew
   }
   return {
-    session: { id, expiresAt },
+    session: { id, expiresAt, mfa: row.mfa === 1 },
     user: {
       id: row.user_id,
       email: row.email,

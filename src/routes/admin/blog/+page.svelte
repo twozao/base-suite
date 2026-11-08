@@ -9,7 +9,7 @@
 
 <PageHeader title="Blog" subtitle="Posts published at /blog">
   {#snippet actions()}
-    <a href="/blog" target="_blank" class="btn btn-sm">View blog ↗</a>
+    <a href="/blog" target="_blank" class="btn btn-sm">View blog</a>
     <a href="/admin/blog/new" class="btn btn-primary btn-sm">New post</a>
   {/snippet}
 </PageHeader>
@@ -46,7 +46,7 @@
       <div class="min-w-0 grow">
         <div class="font-medium truncate">{p.title}</div>
         <div class="text-xs text-base-content/60 truncate">
-          /blog/{p.slug}{p.tags.length ? ` · ${p.tags.join(", ")}` : ""}
+          /blog/{p.slug}{p.tags.length ? ` - ${p.tags.join(", ")}` : ""}
         </div>
       </div>
       <div class="flex flex-col items-end gap-1 shrink-0 text-xs">

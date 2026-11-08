@@ -3,7 +3,19 @@
   import PostCard from "$lib/components/site/PostCard.svelte"
   import NewsletterSignup from "$lib/components/site/NewsletterSignup.svelte"
   import { formatDate } from "$lib/format"
-  let { data } = $props()
+  import { enhance } from "$app/forms"
+  let { data, form } = $props()
+  let replyTo: number | null = $state(null)
+  let turnstileLoaded = $state(false)
+  $effect(() => {
+    if (!data.comments.turnstile || !data.comments.open || turnstileLoaded)
+      return
+    const s = document.createElement("script")
+    s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js"
+    s.async = true
+    document.head.append(s)
+    turnstileLoaded = true
+  })
   const post = $derived(data.post)
   // Structured data for search engines (JSON is escaped, see jsonLd below)
   const ldOpen = "<" + 'script type="application/ld+json">'
@@ -31,11 +43,17 @@
   <meta property="og:type" content="article" />
   <meta property="og:title" content={data.metaTitle} />
   <meta property="og:description" content={data.metaDescription} />
-  {#if post.cover_image_url}<meta
+  {#if post.og_image_url || post.cover_image_url}<meta
       property="og:image"
-      content={post.cover_image_url}
+      content={post.og_image_url || post.cover_image_url}
     />{/if}
-  <link rel="canonical" href="{$page.url.origin}/blog/{post.slug}" />
+  {#if post.seo_noindex}<meta name="robots" content="noindex" />{/if}
+  <link rel="canonical" href="{$page.url.origin}{$page.url.pathname}" />
+  {#each data.alternates as a (a.code)}<link
+      rel="alternate"
+      hreflang={a.code}
+      href="{$page.url.origin}{a.href}"
+    />{/each}
   <!-- eslint-disable-next-line svelte/no-at-html-tags -->
   {@html ldOpen + jsonLd + ldClose}
 </svelte:head>
@@ -46,7 +64,7 @@
       <a
         href="/blog"
         class="text-sm text-base-content/60 hover:text-base-content"
-        >← All posts</a
+        >All posts</a
       >
       {#if post.tags.length}
         <div class="mt-6 flex flex-wrap gap-1">
@@ -69,11 +87,11 @@
       <p class="mt-6 text-sm text-base-content/60">
         {#if post.author_name}<span class="font-medium text-base-content"
             >{post.author_name}</span
-          > ·
+          > -
         {/if}
         <time datetime={post.published_at}>{formatDate(post.published_at)}</time
         >
-        · {data.readingMinutes} min read
+        - {data.readingMinutes} min read
       </p>
     </div>
   </header>
@@ -97,6 +115,124 @@
     {@html post.body_html}
   </div>
 </article>
+
+{#if data.comments.enabled}
+  <section
+    class="mx-auto max-w-3xl px-4 sm:px-6 pb-12"
+    id="comments"
+    aria-labelledby="comments-title"
+  >
+    <h2 id="comments-title" class="text-2xl font-bold mb-6">
+      {data.comments.list.length
+        ? `${data.comments.list.length} comment${data.comments.list.length === 1 ? "" : "s"}`
+        : "Comments"}
+    </h2>
+    <ul class="space-y-6 mb-8">
+      {#each data.comments.list as c (c.id)}
+        <li>
+          <p class="font-semibold">
+            {c.author_name}
+            <span class="text-sm font-normal text-base-content/60"
+              >{formatDate(c.created_at)}</span
+            >
+          </p>
+          <p class="mt-1 whitespace-pre-line">{c.body}</p>
+          {#if data.comments.open}<button
+              type="button"
+              class="btn btn-link btn-xs px-0"
+              onclick={() => (replyTo = c.id)}>Reply</button
+            >{/if}
+          {#if c.replies.length}
+            <ul class="mt-3 space-y-4 border-l-2 border-base-300 pl-4">
+              {#each c.replies as r (r.id)}
+                <li>
+                  <p class="font-semibold">
+                    {r.author_name}
+                    <span class="text-sm font-normal text-base-content/60"
+                      >{formatDate(r.created_at)}</span
+                    >
+                  </p>
+                  <p class="mt-1 whitespace-pre-line">{r.body}</p>
+                </li>
+              {/each}
+            </ul>
+          {/if}
+        </li>
+      {/each}
+    </ul>
+    {#if form?.commented}
+      <div role="status" class="alert alert-success">
+        {form.pending
+          ? "Thanks! Your comment will appear once it is approved."
+          : "Thanks! Your comment is posted."}
+      </div>
+    {:else if data.comments.open}
+      <form
+        method="POST"
+        action="?/comment"
+        use:enhance
+        class="space-y-3 rounded-box border border-base-300 p-5"
+      >
+        <h3 class="font-semibold">
+          {replyTo ? "Reply" : "Leave a comment"}{#if replyTo}
+            <button
+              type="button"
+              class="btn btn-ghost btn-xs"
+              onclick={() => (replyTo = null)}>Cancel reply</button
+            >{/if}
+        </h3>
+        <input type="hidden" name="parent" value={replyTo ?? ""} />
+        <div class="grid gap-3 sm:grid-cols-2">
+          <label class="text-sm"
+            >Name<input
+              name="name"
+              class="input w-full"
+              maxlength="100"
+              autocomplete="name"
+              required
+              value={form?.values?.name ?? ""}
+            /></label
+          >
+          <label class="text-sm"
+            >Email (not shown)<input
+              name="email"
+              type="email"
+              class="input w-full"
+              maxlength="320"
+              autocomplete="email"
+              value={form?.values?.email ?? ""}
+            /></label
+          >
+        </div>
+        <label class="hidden" aria-hidden="true"
+          >Website<input
+            name="website"
+            tabindex="-1"
+            autocomplete="off"
+          /></label
+        >
+        <label class="text-sm block"
+          >Comment<textarea
+            name="body"
+            class="textarea w-full h-28"
+            maxlength="5000"
+            required>{form?.values?.body ?? ""}</textarea
+          ></label
+        >
+        {#if data.comments.turnstile}<div
+            class="cf-turnstile"
+            data-sitekey={data.comments.turnstile}
+          ></div>{/if}
+        {#if form?.commentError}<p class="text-error text-sm" role="alert">
+            {form.commentError}
+          </p>{/if}
+        <button class="btn btn-primary">Post comment</button>
+      </form>
+    {:else}
+      <p class="text-base-content/60">Comments are closed.</p>
+    {/if}
+  </section>
+{/if}
 
 {#if data.site.modules.newsletter}
   <aside class="mx-auto max-w-3xl px-4 sm:px-6 pb-12">

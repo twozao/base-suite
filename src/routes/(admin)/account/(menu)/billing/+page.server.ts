@@ -7,8 +7,10 @@ import type { PageServerLoad } from "./$types"
 import { getSettings } from "$lib/server/settings"
 import { plansForDisplay } from "$lib/server/pricing"
 import { stripeClient } from "$lib/server/billing/stripe"
+import { requireModule } from "$lib/server/auth/staff"
 
 export const load: PageServerLoad = async ({ locals: { db, user } }) => {
+  requireModule("subscriptions")
   if (!user) {
     redirect(303, "/login")
   }

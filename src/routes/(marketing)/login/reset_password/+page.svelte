@@ -50,6 +50,6 @@
     {loading ? "Saving..." : "Set password"}
   </button>
 </form>
-<div class="text-l text-slate-800 mt-4">
+<div class="text-base-content/80 mt-4">
   <a class="underline" href="/login/forgot_password">Request a new link</a>
 </div>

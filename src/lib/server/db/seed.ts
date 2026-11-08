@@ -1,5 +1,8 @@
 import type { Db } from "./index"
 import { renderMarkdown } from "../cms/markdown"
+import { saveSetting, type SettingKey } from "../settings"
+import { toRow, type EventTypeInput } from "../booking/event_types"
+import { SEED_PROFILES, type SeedProfile } from "./profiles"
 
 // Sample content for a fresh install: three posts and an About page, rendered through the same
 // Markdown sanitiser the admin uses. Inserts only when the tables are empty, so it is safe to rerun.
@@ -79,8 +82,48 @@ Started by a small team who were tired of stitching together five tools to run o
 Use the chat button, [book a call](/book) or [send us a message](/contact_us).`,
 }
 
+const insertEventTypes = async (db: Db, types: EventTypeInput[]) => {
+  let sort_order = 0
+  for (const t of types) {
+    await db
+      .insertInto("booking_event_types")
+      .values({
+        id: crypto.randomUUID(),
+        ...toRow(t),
+        sort_order: sort_order++,
+      })
+      .execute()
+  }
+}
+
+const DEFAULT_EVENT_TYPE: EventTypeInput = {
+  name: "30 minute call",
+  slug: "30-minute-call",
+  description: "A short call to talk through what you need.",
+  durationMinutes: 30,
+  locationKind: "video",
+  locationDetail: "",
+  bufferBefore: 0,
+  bufferAfter: 0,
+  minNoticeMinutes: 240,
+  maxDaysAhead: 60,
+  slotInterval: 30,
+  dailyLimit: null,
+  active: true,
+  questions: [],
+}
+
 export const seedSampleContent = async (db: Db) => {
   const added: string[] = []
+  const types = await db
+    .selectFrom("booking_event_types")
+    .select("id")
+    .limit(1)
+    .execute()
+  if (!types.length) {
+    await insertEventTypes(db, [DEFAULT_EVENT_TYPE])
+    added.push(`event type ${DEFAULT_EVENT_TYPE.slug}`)
+  }
   const posts = await db.selectFrom("posts").select("id").limit(1).execute()
   if (!posts.length) {
     for (const p of POSTS) {
@@ -120,4 +163,67 @@ export const seedSampleContent = async (db: Db) => {
     added.push(`page ${ABOUT.slug}`)
   }
   return added
+}
+
+/**
+ * Replace the sample site with a profile: settings (brand, menus, homepage, module switches), pages
+ * and posts. Existing pages, posts and their revisions are removed first; accounts, chats, bookings
+ * and CRM data are untouched. Returns what was written.
+ */
+export const applySeedProfile = async (db: Db, profileId: string) => {
+  const profile: SeedProfile | undefined = SEED_PROFILES[profileId]
+  if (!profile)
+    throw new Error(
+      `unknown profile "${profileId}"; choose one of ${Object.keys(SEED_PROFILES).join(", ")}`,
+    )
+  const written: string[] = []
+  for (const [key, value] of Object.entries(profile.settings)) {
+    await saveSetting(db, key as SettingKey, value as never, null)
+    written.push(`setting ${key}`)
+  }
+  await db.deleteFrom("booking_event_types").execute()
+  await insertEventTypes(db, profile.eventTypes)
+  written.push(...profile.eventTypes.map((t) => `event type ${t.slug}`))
+  await db.deleteFrom("cms_page_revisions").execute()
+  await db.deleteFrom("cms_pages").execute()
+  await db.deleteFrom("posts").execute()
+  for (const p of profile.pages) {
+    await db
+      .insertInto("cms_pages")
+      .values({
+        id: crypto.randomUUID(),
+        slug: p.slug,
+        title: p.title,
+        excerpt: p.excerpt,
+        seo_title: p.seoTitle ?? null,
+        seo_description: p.excerpt,
+        body_md: p.md,
+        body_html: renderMarkdown(p.md),
+        status: "published",
+        published_at: daysAgo(0),
+      })
+      .execute()
+    written.push(`page ${p.slug}`)
+  }
+  for (const p of profile.posts) {
+    await db
+      .insertInto("posts")
+      .values({
+        id: crypto.randomUUID(),
+        slug: p.slug,
+        title: p.title,
+        excerpt: p.excerpt,
+        seo_description: p.excerpt,
+        cover_image_url: p.cover ?? null,
+        body_md: p.md,
+        body_html: renderMarkdown(p.md),
+        author_name: profile.authorName,
+        tags: JSON.stringify(p.tags),
+        status: "published",
+        published_at: daysAgo(p.days),
+      })
+      .execute()
+    written.push(`post ${p.slug}`)
+  }
+  return written
 }

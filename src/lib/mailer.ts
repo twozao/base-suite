@@ -1,7 +1,30 @@
 import { Resend } from "resend"
 import { env } from "$env/dynamic/private"
-import handlebars from "handlebars"
 import type { Db } from "$lib/server/db"
+
+const ESCAPES: Record<string, string> = {
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  '"': "&quot;",
+  "'": "&#x27;",
+  "`": "&#x60;",
+  "=": "&#x3D;",
+}
+
+/**
+ * The part of Handlebars the email templates use: {{{raw}}}, {{escaped}} and {{#if x}}...{{/if}}.
+ * Workers cannot compile templates into code at run time, which Handlebars needs.
+ */
+export const renderTemplate = (tpl: string, vars: Record<string, string>) =>
+  tpl
+    .replace(/\{\{#if (\w+)\}\}([\s\S]*?)\{\{\/if\}\}/g, (_, key, body) =>
+      vars[key] ? body : "",
+    )
+    .replace(/\{\{\{\s*(\w+)\s*\}\}\}/g, (_, key) => vars[key] ?? "")
+    .replace(/\{\{\s*(\w+)\s*\}\}/g, (_, key) =>
+      (vars[key] ?? "").replace(/[&<>"'`=]/g, (c) => ESCAPES[c]),
+    )
 
 /** Templates that exist as src/lib/emails/<name>_text.hbs and <name>_html.hbs. */
 export type EmailTemplate =
@@ -9,6 +32,7 @@ export type EmailTemplate =
   | "newsletter_confirm"
   | "verify_email"
   | "reset_password"
+  | "notice"
 
 // Sends an email to the admin email address. Does not throw errors, but logs them.
 export const sendAdminEmail = async ({
@@ -83,12 +107,14 @@ export const sendTemplatedEmail = async ({
   from_email,
   template_name,
   template_properties,
+  attachments,
 }: {
   subject: string
   to_emails: string[]
   from_email: string
   template_name: EmailTemplate
   template_properties: Record<string, string>
+  attachments?: { filename: string; content: Buffer; contentType: string }[]
 }) => {
   // Email is optional: without a provider nothing is sent and no error is raised.
   if (!env.PRIVATE_RESEND_API_KEY) return
@@ -98,7 +124,7 @@ export const sendTemplatedEmail = async ({
     const textTemplate = await import(
       `./emails/${template_name}_text.hbs?raw`
     ).then((mod) => mod.default)
-    plaintextBody = handlebars.compile(textTemplate)(template_properties)
+    plaintextBody = renderTemplate(textTemplate, template_properties)
   } catch {
     plaintextBody = undefined
   }
@@ -108,7 +134,7 @@ export const sendTemplatedEmail = async ({
     const htmlTemplate = await import(
       `./emails/${template_name}_html.hbs?raw`
     ).then((mod) => mod.default)
-    htmlBody = handlebars.compile(htmlTemplate)(template_properties)
+    htmlBody = renderTemplate(htmlTemplate, template_properties)
   } catch {
     htmlBody = undefined
   }
@@ -128,6 +154,7 @@ export const sendTemplatedEmail = async ({
       to: to_emails,
       subject,
       ...content,
+      ...(attachments ? { attachments } : {}),
     })
     if (resp.error) console.error("Failed to send email, error:", resp.error)
   } catch (e) {

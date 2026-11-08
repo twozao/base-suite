@@ -70,7 +70,7 @@
       </p>{/if}
     <p class="mt-auto text-sm text-base-content/60">
       {formatDate(post.published_at)}{post.author_name
-        ? ` · ${post.author_name}`
+        ? ` - ${post.author_name}`
         : ""}
     </p>
   </div>

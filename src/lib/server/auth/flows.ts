@@ -2,28 +2,24 @@ import type { RequestEvent } from "@sveltejs/kit"
 import { env } from "$env/dynamic/private"
 import { sendTemplatedEmail } from "$lib/mailer"
 import { getSettings } from "../settings"
-import { createSession, setSessionCookie } from "./session"
+import { finishFirstStep } from "./two_factor"
 import { issueToken } from "./users"
 
 type Ev = Pick<RequestEvent, "locals" | "cookies" | "url">
 
-/** Opens a session for the user and sets the cookie on this response. */
-export const startSession = async (event: Ev, userId: string) => {
-  const { token, expiresAt } = await createSession(event.locals.db, userId)
-  setSessionCookie(
-    event.cookies,
-    token,
-    expiresAt,
-    event.url.protocol === "https:",
-  )
-}
+/** Opens a session after the first sign-in step, or starts the two-factor step. Returns where to go next. */
+export const startSession = (
+  event: Ev & { request?: Request },
+  userId: string,
+  next = "/account",
+) => finishFirstStep(event, userId, next)
 
 // Transactional mail needs a provider key and a sender. Without them, sign-up skips verification.
 export const mailConfigured = () =>
   !!env.PRIVATE_RESEND_API_KEY &&
   !!(env.PRIVATE_FROM_EMAIL || env.PRIVATE_FROM_ADMIN_EMAIL)
 
-const fromEmail = () =>
+export const fromEmail = () =>
   env.PRIVATE_FROM_EMAIL || env.PRIVATE_FROM_ADMIN_EMAIL || ""
 
 export const sendVerificationEmail = async (

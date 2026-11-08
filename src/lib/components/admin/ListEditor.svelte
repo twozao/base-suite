@@ -42,14 +42,14 @@
             class="btn btn-ghost btn-xs"
             aria-label="Move up"
             disabled={i === 0}
-            onclick={() => move(i, -1)}>↑</button
+            onclick={() => move(i, -1)}>Up</button
           >
           <button
             type="button"
             class="btn btn-ghost btn-xs"
             aria-label="Move down"
             disabled={i === items.length - 1}
-            onclick={() => move(i, 1)}>↓</button
+            onclick={() => move(i, 1)}>Down</button
           >
           <button
             type="button"

@@ -10,3 +10,10 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 /data
 /.claude/worktrees
+.wrangler
+.dev.vars
+
+# Generated per demo by setup.sh, with account-specific IDs
+wrangler.demo-*.toml
+/supabase/.branches
+/supabase/.temp

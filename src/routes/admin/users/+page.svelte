@@ -27,7 +27,7 @@
               >{u.email}</a
             >
             <div class="text-xs opacity-70">
-              {[u.full_name, u.company_name].filter(Boolean).join(" · ")}
+              {[u.full_name, u.company_name].filter(Boolean).join(" - ")}
             </div>
           </td>
           <td

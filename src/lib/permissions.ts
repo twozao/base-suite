@@ -7,8 +7,12 @@ export const PERMISSIONS = [
   "users.view",
   "users.manage_roles",
   "billing.view",
+  "cms.write",
   "cms.edit",
   "cms.publish",
+  "cms.publish_own",
+  "comments.moderate",
+  "plugins.manage",
   "contact.manage",
   "chat.respond",
   "bookings.view",
@@ -17,20 +21,47 @@ export const PERMISSIONS = [
   "crm.manage",
   "newsletter.manage",
   "analytics.view",
+  "helpdesk.work",
+  "helpdesk.configure",
+  "forms.manage",
+  "campaigns.manage",
+  "projects.manage",
+  "team.manage",
+  "team.self",
+  "expenses.manage",
+  "expenses.submit",
+  "translations.manage",
+  "reports.view",
+  "assistant.manage",
 ] as const
 export type Permission = (typeof PERMISSIONS)[number]
 
-export const ROLES: readonly AppRole[] = ["admin", "editor", "support"]
+export const ROLES: readonly AppRole[] = [
+  "admin",
+  "editor",
+  "author",
+  "contributor",
+  "support",
+]
 
 const ROLE_PERMISSIONS: Record<AppRole, readonly Permission[]> = {
   admin: PERMISSIONS,
   editor: [
     "admin.access",
+    "cms.write",
     "cms.edit",
     "cms.publish",
+    "comments.moderate",
     "newsletter.manage",
     "analytics.view",
+    "forms.manage",
+    "campaigns.manage",
+    "translations.manage",
+    "team.self",
+    "expenses.submit",
   ],
+  author: ["admin.access", "cms.write", "cms.publish_own", "team.self"],
+  contributor: ["admin.access", "cms.write", "team.self"],
   support: [
     "admin.access",
     "users.view",
@@ -38,14 +69,21 @@ const ROLE_PERMISSIONS: Record<AppRole, readonly Permission[]> = {
     "chat.respond",
     "bookings.view",
     "crm.manage",
+    "helpdesk.work",
+    "projects.manage",
+    "team.self",
+    "expenses.submit",
   ],
 }
 
 export const ROLE_DESCRIPTIONS: Record<AppRole, string> = {
   admin: "Full access, including roles, billing and settings",
-  editor: "Manage website content, newsletter and analytics",
+  editor:
+    "Manage all website content, comments, translations, forms, campaigns and analytics",
+  author: "Write pages and posts and publish their own",
+  contributor: "Write drafts and send them to an editor for review",
   support:
-    "Answer chats and contact requests, manage CRM, view bookings and users",
+    "Work tickets, chats and contact requests, manage CRM and projects, view bookings and users",
 }
 
 export const permissionsFor = (

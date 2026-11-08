@@ -63,7 +63,7 @@
     {#each data.messages as m (m.id)}
       <div class="chat {m.sender === 'visitor' ? 'chat-end' : 'chat-start'}">
         <div class="chat-header text-xs opacity-60">
-          {m.sender === "visitor" ? "You" : "Support"} · {formatDateTime(
+          {m.sender === "visitor" ? "You" : "Support"} - {formatDateTime(
             m.created_at,
           )}
         </div>
@@ -78,14 +78,14 @@
       </div>
     {:else}
       <p class="text-center text-base-content/60 py-10">
-        No messages yet. Say hello 👋
+        No messages yet. Say hello
       </p>
     {/each}
   </div>
   <form class="p-3 border-t border-base-300 flex gap-2" onsubmit={send}>
     <textarea
       class="textarea grow h-16"
-      placeholder="Write a message…"
+      placeholder="Write a message..."
       maxlength="4000"
       bind:value={draft}
       aria-label="Message"

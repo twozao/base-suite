@@ -12,7 +12,7 @@
       class="btn btn-sm"
       href="https://dashboard.stripe.com/subscriptions"
       target="_blank"
-      rel="noopener noreferrer">Open Stripe ↗</a
+      rel="noopener noreferrer">Open Stripe</a
     >
   {/snippet}
 </PageHeader>

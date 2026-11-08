@@ -25,7 +25,14 @@ export type AdminNavItem = {
   permission: Permission
   icon: string // SVG path data (24x24, stroke)
   module?: ModuleId
-  group: "Overview" | "Content" | "Customers" | "Growth" | "Configuration"
+  group:
+    | "Overview"
+    | "Content"
+    | "Customers"
+    | "Growth"
+    | "Operations"
+    | "Insights"
+    | "Configuration"
 }
 
 export type ModuleManifest = {
@@ -57,7 +64,7 @@ export const MODULES: ModuleManifest[] = [
     category: "Website",
     dependsOn: [],
     defaultActive: true,
-    provides: ["/your-page URLs", "/blog + RSS", "Admin → Pages, Blog"],
+    provides: ["/your-page URLs", "/blog + RSS", "Admin -> Pages, Blog"],
   },
   {
     id: "contact",
@@ -67,7 +74,7 @@ export const MODULES: ModuleManifest[] = [
     category: "Engage",
     dependsOn: [],
     defaultActive: true,
-    provides: ["/contact_us", "Admin → Contact inbox", "Email alerts"],
+    provides: ["/contact_us", "Admin -> Contact inbox", "Email alerts"],
   },
   {
     id: "chat",
@@ -77,17 +84,25 @@ export const MODULES: ModuleManifest[] = [
     category: "Engage",
     dependsOn: [],
     defaultActive: true,
-    provides: ["Chat widget", "Customer portal → Support", "Admin → Live chat"],
+    provides: [
+      "Chat widget",
+      "Customer portal -> Support",
+      "Admin -> Live chat",
+    ],
   },
   {
     id: "booking",
     name: "Online booking",
     summary:
-      "Let visitors book calls through Calendly; bookings sync into the portal via webhook.",
+      "Let visitors book meetings on your own calendar: event types, availability, time zones, reschedule and cancel links, invites and reminders.",
     category: "Engage",
     dependsOn: [],
     defaultActive: true,
-    provides: ["/book", "Customer portal → My bookings", "Admin → Bookings"],
+    provides: [
+      "/book scheduling pages",
+      "Customer portal -> My bookings",
+      "Admin -> Bookings, Event types, Availability",
+    ],
   },
   {
     id: "newsletter",
@@ -97,7 +112,7 @@ export const MODULES: ModuleManifest[] = [
     category: "Engage",
     dependsOn: [],
     defaultActive: true,
-    provides: ["Signup form in footer and blog", "Admin → Newsletter"],
+    provides: ["Signup form in footer and blog", "Admin -> Newsletter"],
   },
   {
     id: "subscriptions",
@@ -109,8 +124,8 @@ export const MODULES: ModuleManifest[] = [
     defaultActive: true,
     provides: [
       "/pricing",
-      "Customer portal → Billing",
-      "Admin → Subscriptions, Pricing plans",
+      "Customer portal -> Billing",
+      "Admin -> Subscriptions, Pricing plans",
     ],
   },
   {
@@ -122,7 +137,7 @@ export const MODULES: ModuleManifest[] = [
     dependsOn: [],
     defaultActive: true,
     provides: [
-      "Admin → CRM contacts, Deals pipeline",
+      "Admin -> CRM contacts, Deals pipeline",
       "Automatic lead capture",
     ],
   },
@@ -134,29 +149,125 @@ export const MODULES: ModuleManifest[] = [
     category: "Insights",
     dependsOn: [],
     defaultActive: true,
-    provides: ["Admin → Analytics", "Dashboard traffic tile"],
+    provides: ["Admin -> Analytics", "Dashboard traffic tile"],
+  },
+  {
+    id: "assistant",
+    name: "AI assistant",
+    summary:
+      "A chat that answers from your own content using Needle 3 search, with any mix of AI providers and MCP connections to other services.",
+    category: "Engage",
+    dependsOn: [],
+    defaultActive: false,
+    provides: [
+      "AI chat bubble on the site",
+      "Admin -> AI assistant",
+      "Add your own model keys and MCP servers",
+    ],
+  },
+  {
+    id: "helpdesk",
+    name: "Helpdesk",
+    summary:
+      "Tickets with priorities, SLA targets, canned replies and assignment. Contact requests and chats become tickets, and customers follow theirs in the portal.",
+    category: "Customers",
+    dependsOn: ["crm"],
+    defaultActive: false,
+    provides: [
+      "Admin -> Helpdesk",
+      "Customer portal -> Tickets",
+      "Create a ticket from a chat or contact request",
+    ],
+  },
+  {
+    id: "kb",
+    name: "Knowledge base",
+    summary:
+      "A searchable help centre with categories, articles and 'was this helpful?' feedback.",
+    category: "Customers",
+    dependsOn: ["cms"],
+    defaultActive: false,
+    provides: ["/help", "Admin -> Knowledge base", "Results in site search"],
+  },
+  {
+    id: "forms",
+    name: "Form builder",
+    summary:
+      "Build surveys and applications, each with its own page, spam protection, a submissions inbox and CSV export.",
+    category: "Engage",
+    dependsOn: [],
+    defaultActive: false,
+    provides: ["/forms/your-form", "Admin -> Forms", "Answers reach the CRM"],
+  },
+  {
+    id: "campaigns",
+    name: "Email campaigns",
+    summary:
+      "Write and send campaigns to newsletter subscribers, now or on a schedule, with one-click unsubscribe and open and click stats.",
+    category: "Engage",
+    dependsOn: ["newsletter"],
+    defaultActive: false,
+    provides: ["Admin -> Campaigns", "Needs a mail provider to send"],
+  },
+  {
+    id: "projects",
+    name: "Projects & tasks",
+    summary:
+      "Client projects with task boards and due dates. Share progress with the client in their customer portal.",
+    category: "Operate",
+    dependsOn: ["crm"],
+    defaultActive: false,
+    provides: ["Admin -> Projects", "Customer portal -> Projects"],
+  },
+  {
+    id: "team",
+    name: "Team & HR",
+    summary:
+      "Staff directory, leave requests with approval and timesheets. Approved leave for a booking host blocks those days on the calendar.",
+    category: "Operate",
+    dependsOn: [],
+    defaultActive: false,
+    provides: ["Admin -> Team", "Admin -> My time and leave"],
+  },
+  {
+    id: "expenses",
+    name: "Expenses",
+    summary:
+      "Log and categorise expenses with private receipts, approvals, monthly totals and CSV export.",
+    category: "Operate",
+    dependsOn: [],
+    defaultActive: false,
+    provides: ["Admin -> Expenses", "Costs per project", "Feeds Reports"],
+  },
+  {
+    id: "i18n",
+    name: "Multilingual",
+    summary:
+      "Translate pages, posts, help articles, menus, the homepage and site labels, with per-language URLs and hreflang.",
+    category: "Website",
+    dependsOn: ["cms"],
+    defaultActive: false,
+    provides: [
+      "/fr/your-page URLs",
+      "Language switcher",
+      "Admin -> Translations",
+    ],
+  },
+  {
+    id: "reports",
+    name: "Reports",
+    summary:
+      "Revenue, funnel, support, booking and campaign reports across your active modules, with CSV export.",
+    category: "Insights",
+    dependsOn: ["analytics"],
+    defaultActive: false,
+    provides: ["Admin -> Reports"],
   },
 ].filter(
   (m) => m.id in InstalledModules && InstalledModules[m.id as ModuleId],
 ) as ModuleManifest[]
 
 export const PLANNED_MODULES: PlannedModule[] = [
-  {
-    id: "helpdesk",
-    name: "Helpdesk",
-    summary:
-      "Tickets with SLAs, canned replies and email-in; chats and contact requests become tickets.",
-    category: "Customers",
-    dependsOn: ["crm"],
-  },
-  {
-    id: "knowledge-base",
-    name: "Knowledge base",
-    summary:
-      "Searchable help articles with categories and 'was this helpful' feedback.",
-    category: "Customers",
-    dependsOn: ["cms"],
-  },
   {
     id: "invoicing",
     name: "Invoicing",
@@ -181,62 +292,11 @@ export const PLANNED_MODULES: PlannedModule[] = [
     dependsOn: [],
   },
   {
-    id: "forms",
-    name: "Form builder",
-    summary:
-      "Drag-and-drop forms (surveys, applications) with submissions inbox.",
-    category: "Engage",
-    dependsOn: [],
-  },
-  {
-    id: "campaigns",
-    name: "Email campaigns",
-    summary: "Write and send newsletters to subscribers with open/click stats.",
-    category: "Engage",
-    dependsOn: ["newsletter"],
-  },
-  {
     id: "reviews",
     name: "Reviews",
     summary: "Collect and publish customer reviews and testimonials.",
     category: "Engage",
     dependsOn: ["crm"],
-  },
-  {
-    id: "projects",
-    name: "Projects & tasks",
-    summary:
-      "Client projects with tasks, boards and due dates; share progress in the customer portal.",
-    category: "Operate",
-    dependsOn: ["crm"],
-  },
-  {
-    id: "team",
-    name: "Team & HR",
-    summary: "Staff directory, leave requests and timesheets.",
-    category: "Operate",
-    dependsOn: [],
-  },
-  {
-    id: "expenses",
-    name: "Expenses",
-    summary: "Log and categorise expenses with receipts.",
-    category: "Operate",
-    dependsOn: [],
-  },
-  {
-    id: "multilingual",
-    name: "Multilingual",
-    summary: "Translate pages, posts and UI; per-locale URLs and hreflang.",
-    category: "Website",
-    dependsOn: ["cms"],
-  },
-  {
-    id: "reports",
-    name: "Reports",
-    summary: "Revenue, funnel and support reports across modules.",
-    category: "Insights",
-    dependsOn: ["analytics"],
   },
 ]
 
@@ -290,6 +350,21 @@ export const dependentsOf = (id: ModuleId): ModuleId[] =>
 // ---------------------------------------------------------------------------
 
 const ICONS = {
+  spark:
+    "M12 3l1.800 4.700 4.700 1.800-4.700 1.800L12 16l-1.800-4.700L5.500 9.500l4.700-1.800L12 3zm7 12l.900 2.100L22 18l-2.100.900L19 21l-.900-2.100L16 18l2.100-.900L19 15z",
+  ticket:
+    "M4 7a2 2 0 012-2h12a2 2 0 012 2v3a2 2 0 000 4v3a2 2 0 01-2 2H6a2 2 0 01-2-2v-3a2 2 0 000-4V7zm10-2v14",
+  book: "M4 5a2 2 0 012-2h13v16H6a2 2 0 00-2 2V5zm0 14a2 2 0 012-2h13",
+  form: "M6 3h12a1 1 0 011 1v16a1 1 0 01-1 1H6a1 1 0 01-1-1V4a1 1 0 011-1zm3 5h6m-6 4h6m-6 4h3",
+  send: "M21 3L10 14M21 3l-7 18-4-7-7-4 18-7z",
+  board: "M4 4h5v16H4zM10 4h5v10h-5zM16 4h4v13h-4z",
+  team: "M16 19v-1a4 4 0 00-4-4H6a4 4 0 00-4 4v1m14-8a3 3 0 100-6m6 14v-1a4 4 0 00-3-3.9M9 11a4 4 0 100-8 4 4 0 000 8z",
+  clock: "M12 7v5l3 2m6-2a9 9 0 11-18 0 9 9 0 0118 0z",
+  receipt: "M6 3h12v18l-3-2-3 2-3-2-3 2V3zm3 5h6m-6 4h6",
+  globe:
+    "M12 21a9 9 0 100-18 9 9 0 000 18zm0 0c2.5-2.5 3.5-5.5 3.5-9S14.500 5.500 12 3m0 18c-2.5-2.5-3.5-5.5-3.5-9S9.500 5.500 12 3M3.500 9h17m-17 6h17",
+  report: "M4 4v16h16M8 16v-4m4 4V8m4 8v-6",
+  shield: "M12 3l8 3v6c0 5-3.500 8.500-8 9-4.500-.5-8-4-8-9V6l8-3z",
   dashboard: "M3 12l9-9 9 9M5 10v10h5v-6h4v6h5V10",
   users:
     "M17 20h5v-2a4 4 0 00-5-3.9M17 20H7m10 0v-2c0-.7-.1-1.3-.4-1.9M7 20H2v-2a4 4 0 015-3.9M7 20v-2c0-.7.1-1.3.4-1.9m0 0a5 5 0 019.2 0M15 7a3 3 0 11-6 0 3 3 0 016 0z",
@@ -320,7 +395,7 @@ const ICONS = {
     "M10.3 4.3c.4-1.7 3-1.7 3.4 0a1.7 1.7 0 002.6 1.1c1.5-.9 3.3.8 2.4 2.4a1.7 1.7 0 001 2.5c1.8.4 1.8 3 0 3.4a1.7 1.7 0 00-1 2.6c.9 1.5-.9 3.3-2.4 2.4a1.7 1.7 0 00-2.6 1c-.4 1.8-3 1.8-3.4 0a1.7 1.7 0 00-2.6-1c-1.5.9-3.3-.9-2.4-2.4a1.7 1.7 0 00-1-2.6c-1.8-.4-1.8-3 0-3.4a1.7 1.7 0 001-2.6c-.9-1.5.9-3.3 2.4-2.4 1 .6 2.3.1 2.6-1zM15 12a3 3 0 11-6 0 3 3 0 016 0z",
 }
 
-const ALL_ADMIN_NAV: AdminNavItem[] = [
+export const ALL_ADMIN_NAV: AdminNavItem[] = [
   {
     group: "Overview",
     href: "/admin",
@@ -329,7 +404,7 @@ const ALL_ADMIN_NAV: AdminNavItem[] = [
     icon: ICONS.dashboard,
   },
   {
-    group: "Overview",
+    group: "Insights",
     href: "/admin/analytics",
     label: "Analytics",
     permission: "analytics.view",
@@ -348,7 +423,7 @@ const ALL_ADMIN_NAV: AdminNavItem[] = [
     group: "Content",
     href: "/admin/pages",
     label: "Pages",
-    permission: "cms.edit",
+    permission: "cms.write",
     icon: ICONS.pages,
     module: "cms",
   },
@@ -356,7 +431,7 @@ const ALL_ADMIN_NAV: AdminNavItem[] = [
     group: "Content",
     href: "/admin/blog",
     label: "Blog",
-    permission: "cms.edit",
+    permission: "cms.write",
     icon: ICONS.blog,
     module: "cms",
   },
@@ -364,7 +439,7 @@ const ALL_ADMIN_NAV: AdminNavItem[] = [
     group: "Content",
     href: "/admin/media",
     label: "Media",
-    permission: "cms.edit",
+    permission: "cms.write",
     icon: ICONS.image,
   },
 
@@ -434,6 +509,54 @@ const ALL_ADMIN_NAV: AdminNavItem[] = [
   },
 
   {
+    group: "Content",
+    href: "/admin/content",
+    label: "Content",
+    permission: "cms.write",
+    icon: ICONS.board,
+    module: "cms",
+  },
+  {
+    group: "Content",
+    href: "/admin/blocks",
+    label: "Reusable blocks",
+    permission: "cms.write",
+    icon: ICONS.puzzle,
+    module: "cms",
+  },
+  {
+    group: "Content",
+    href: "/admin/review",
+    label: "Review queue",
+    permission: "cms.publish",
+    icon: ICONS.inbox,
+    module: "cms",
+  },
+  {
+    group: "Content",
+    href: "/admin/comments",
+    label: "Comments",
+    permission: "comments.moderate",
+    icon: ICONS.chat,
+    module: "cms",
+  },
+  {
+    group: "Content",
+    href: "/admin/redirects",
+    label: "Redirects",
+    permission: "cms.publish",
+    icon: ICONS.funnel,
+  },
+  {
+    group: "Content",
+    href: "/admin/import",
+    label: "Import",
+    permission: "settings.manage",
+    icon: ICONS.send,
+    module: "cms",
+  },
+
+  {
     group: "Configuration",
     href: "/admin/modules",
     label: "Modules",
@@ -446,6 +569,13 @@ const ALL_ADMIN_NAV: AdminNavItem[] = [
     label: "Brand & navigation",
     permission: "settings.manage",
     icon: ICONS.brush,
+  },
+  {
+    group: "Configuration",
+    href: "/admin/signin",
+    label: "Sign-in",
+    permission: "settings.manage",
+    icon: ICONS.shield,
   },
   {
     group: "Configuration",
@@ -464,16 +594,213 @@ const ALL_ADMIN_NAV: AdminNavItem[] = [
   },
   {
     group: "Configuration",
+    href: "/admin/content-types",
+    label: "Content types",
+    permission: "settings.manage",
+    icon: ICONS.pages,
+    module: "cms",
+  },
+  {
+    group: "Configuration",
+    href: "/admin/extensions",
+    label: "Extensions",
+    permission: "plugins.manage",
+    icon: ICONS.puzzle,
+  },
+  {
+    group: "Configuration",
+    href: "/admin/apps",
+    label: "Apps",
+    permission: "plugins.manage",
+    icon: ICONS.spark,
+  },
+  {
+    group: "Configuration",
+    href: "/admin/developers",
+    label: "API & webhooks",
+    permission: "plugins.manage",
+    icon: ICONS.send,
+  },
+  {
+    group: "Configuration",
+    href: "/admin/security",
+    label: "Security",
+    permission: "settings.manage",
+    icon: ICONS.shield,
+  },
+  {
+    group: "Configuration",
+    href: "/admin/backup",
+    label: "Backup & export",
+    permission: "settings.manage",
+    icon: ICONS.receipt,
+  },
+  {
+    group: "Configuration",
+    href: "/admin/health",
+    label: "Site health",
+    permission: "settings.manage",
+    icon: ICONS.report,
+  },
+  {
+    group: "Configuration",
     href: "/admin/audit",
     label: "Audit log",
     permission: "audit.view",
     icon: ICONS.audit,
   },
+  {
+    group: "Customers",
+    href: "/admin/assistant",
+    label: "AI assistant",
+    permission: "assistant.manage",
+    icon: ICONS.spark,
+    module: "assistant",
+  },
+  {
+    group: "Customers",
+    href: "/admin/helpdesk",
+    label: "Helpdesk",
+    permission: "helpdesk.work",
+    icon: ICONS.ticket,
+    module: "helpdesk",
+  },
+  {
+    group: "Content",
+    href: "/admin/kb",
+    label: "Knowledge base",
+    permission: "cms.edit",
+    icon: ICONS.book,
+    module: "kb",
+  },
+  {
+    group: "Content",
+    href: "/admin/translations",
+    label: "Translations",
+    permission: "translations.manage",
+    icon: ICONS.globe,
+    module: "i18n",
+  },
+  {
+    group: "Growth",
+    href: "/admin/forms",
+    label: "Forms",
+    permission: "forms.manage",
+    icon: ICONS.form,
+    module: "forms",
+  },
+  {
+    group: "Growth",
+    href: "/admin/campaigns",
+    label: "Campaigns",
+    permission: "campaigns.manage",
+    icon: ICONS.send,
+    module: "campaigns",
+  },
+  {
+    group: "Operations",
+    href: "/admin/projects",
+    label: "Projects",
+    permission: "projects.manage",
+    icon: ICONS.board,
+    module: "projects",
+  },
+  {
+    group: "Operations",
+    href: "/admin/team",
+    label: "Team",
+    permission: "team.manage",
+    icon: ICONS.team,
+    module: "team",
+  },
+  {
+    group: "Operations",
+    href: "/admin/me",
+    label: "My time and leave",
+    permission: "team.self",
+    icon: ICONS.clock,
+    module: "team",
+  },
+  {
+    group: "Operations",
+    href: "/admin/expenses",
+    label: "Expenses",
+    permission: "expenses.submit",
+    icon: ICONS.receipt,
+    module: "expenses",
+  },
+  {
+    group: "Insights",
+    href: "/admin/reports",
+    label: "Reports",
+    permission: "reports.view",
+    icon: ICONS.report,
+    module: "reports",
+  },
 ]
+
+// Menu order. Items are declared by module above; a business only sees what it has switched on.
+export const NAV_ORDER = [
+  "/admin",
+  "/admin/homepage",
+  "/admin/pages",
+  "/admin/blog",
+  "/admin/content",
+  "/admin/blocks",
+  "/admin/kb",
+  "/admin/media",
+  "/admin/translations",
+  "/admin/review",
+  "/admin/comments",
+  "/admin/redirects",
+  "/admin/import",
+  "/admin/crm",
+  "/admin/crm/deals",
+  "/admin/assistant",
+  "/admin/helpdesk",
+  "/admin/support",
+  "/admin/contact",
+  "/admin/bookings",
+  "/admin/users",
+  "/admin/newsletter",
+  "/admin/campaigns",
+  "/admin/forms",
+  "/admin/subscriptions",
+  "/admin/projects",
+  "/admin/team",
+  "/admin/me",
+  "/admin/expenses",
+  "/admin/analytics",
+  "/admin/reports",
+  "/admin/modules",
+  "/admin/content-types",
+  "/admin/extensions",
+  "/admin/apps",
+  "/admin/developers",
+  "/admin/site",
+  "/admin/signin",
+  "/admin/security",
+  "/admin/pricing",
+  "/admin/settings",
+  "/admin/backup",
+  "/admin/health",
+  "/admin/audit",
+]
+
+/** The one menu entry for a path: the longest match on whole path segments, so children do not light up their parent too. */
+export const activeNavHref = (hrefs: string[], path: string) => {
+  let best: string | null = null
+  for (const href of hrefs) {
+    const hit =
+      path === href || (href !== "/admin" && path.startsWith(`${href}/`))
+    if (hit && (!best || href.length > best.length)) best = href
+  }
+  return best
+}
 
 export const adminNavFor = (permissions: ReadonlySet<Permission>) =>
   ALL_ADMIN_NAV.filter(
     (item) =>
       permissions.has(item.permission) &&
       (!item.module || isModuleEnabled(item.module)),
-  )
+  ).sort((a, b) => NAV_ORDER.indexOf(a.href) - NAV_ORDER.indexOf(b.href))

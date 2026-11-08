@@ -24,9 +24,17 @@ beforeEach(async () => {
 })
 
 const signUp = (email: string, password = "correct horse") =>
-  createUser(db, { email, password })
+  createUser(db, { email, password, claimOwner: true })
 
 describe("accounts", () => {
+  it("makes no one admin without an owner claim", async () => {
+    const r = await createUser(db, {
+      email: "x@example.com",
+      password: "correct horse",
+    })
+    expect(r).toMatchObject({ ok: true, firstUser: false })
+    expect(await db.selectFrom("user_roles").selectAll().execute()).toEqual([])
+  })
   it("makes the first account the admin and later ones plain users", async () => {
     const first = await signUp("Owner@Example.com")
     const second = await signUp("second@example.com")

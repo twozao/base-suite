@@ -1,7 +1,13 @@
 import { redirect } from "@sveltejs/kit"
 import { CreateProfileStep } from "../../../config"
 import { hasFullProfile } from "$lib/profile"
+import { isModuleEnabled } from "$lib/modules"
 import { getStaff } from "$lib/server/auth/staff"
+import { shouldAskForPlan } from "$lib/server/pricing"
+import { getSettings } from "$lib/server/settings"
+import { linkedProviders } from "$lib/server/auth/oauth_accounts"
+import { signinPolicy } from "$lib/server/auth/signin"
+import { hasPassword } from "$lib/server/auth/users"
 import type { LayoutServerLoad } from "./$types"
 
 const createProfilePath = "/account/create_profile"
@@ -27,5 +33,24 @@ export const load: LayoutServerLoad = async (event) => {
   ) {
     redirect(303, createProfilePath)
   }
-  return { user, profile, isStaff: !!staff }
+  const [passwordSet, linked, policy] = await Promise.all([
+    hasPassword(event.locals.db, user.id),
+    linkedProviders(event.locals.db, user.id),
+    signinPolicy(event.locals.db),
+  ])
+  const { pricing } = await getSettings(event.locals.db)
+  return {
+    user,
+    profile,
+    isStaff: !!staff,
+    askForPlan: shouldAskForPlan({
+      subscriptionsOn: isModuleEnabled("subscriptions"),
+      askAfterSignUp: pricing.askAfterSignUp,
+      isStaff: !!staff,
+    }),
+    hasPassword: passwordSet,
+    passwordSignIn: policy.password,
+    linked,
+    signinProviders: policy.providers,
+  }
 }

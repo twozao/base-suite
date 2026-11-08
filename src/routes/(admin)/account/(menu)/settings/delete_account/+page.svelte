@@ -25,12 +25,20 @@
   successTitle="Account deleted"
   successBody="Your account has been deleted."
   formTarget="/account/api?/deleteAccount"
-  fields={[
-    {
-      id: "currentPassword",
-      label: "Current Password",
-      initialValue: "",
-      inputType: "password",
-    },
-  ]}
+  fields={data.hasPassword
+    ? [
+        {
+          id: "currentPassword",
+          label: "Current Password",
+          initialValue: "",
+          inputType: "password",
+        },
+      ]
+    : [
+        {
+          id: "confirmEmail",
+          label: "Type your email to confirm",
+          initialValue: "",
+        },
+      ]}
 />

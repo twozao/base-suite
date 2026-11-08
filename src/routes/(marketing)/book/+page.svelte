@@ -1,7 +1,10 @@
 <script lang="ts">
+  import Icon from "$lib/components/site/Icon.svelte"
   let { data } = $props()
   // svelte-ignore state_referenced_locally
-  let selected: number | null = $state(data.eventTypes.length === 1 ? 0 : null)
+  let selected: number | null = $state(
+    data.eventTypes.length === 1 && !data.native.length ? 0 : null,
+  )
 </script>
 
 <svelte:head>
@@ -16,14 +19,51 @@
   </div>
 </section>
 <div class="max-w-5xl mx-auto px-4 sm:px-6 pb-12">
-  {#if data.eventTypes.length === 0}
+  {#if data.native.length}
+    <ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-8">
+      {#each data.native as t (t.id)}
+        <li class="contents">
+          <a
+            href="/book/{t.slug}"
+            class="group flex flex-col rounded-box border border-base-300 bg-base-100 p-6 transition hover:-translate-y-0.5 hover:border-primary hover:shadow-md"
+          >
+            <span class="text-lg font-bold">{t.name}</span>
+            <span
+              class="mt-2 flex flex-wrap gap-3 text-sm text-base-content/70"
+            >
+              <span class="flex items-center gap-1"
+                ><Icon name="clock" class="h-4 w-4" />{t.durationMinutes} min</span
+              >
+              <span class="flex items-center gap-1"
+                ><Icon
+                  name={t.locationKind === "phone"
+                    ? "phone"
+                    : t.locationKind === "in_person"
+                      ? "pin"
+                      : "globe"}
+                  class="h-4 w-4"
+                />{t.locationLabel}</span
+              >
+            </span>
+            {#if t.description}<span class="mt-3 grow text-base-content/70"
+                >{t.description}</span
+              >{/if}
+            <span class="mt-4 flex items-center gap-1 font-medium text-primary"
+              >Choose a time <Icon name="arrow" class="h-4 w-4" /></span
+            >
+          </a>
+        </li>
+      {/each}
+    </ul>
+  {/if}
+  {#if data.eventTypes.length === 0 && !data.native.length}
     <div class="alert">
       <span>
         Online booking isn't set up yet. Please
         <a class="link" href="/contact_us">contact us</a> instead.
       </span>
     </div>
-  {:else}
+  {:else if data.eventTypes.length}
     <ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-8">
       {#each data.eventTypes as t, i}
         <li class="contents">

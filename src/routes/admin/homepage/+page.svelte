@@ -45,7 +45,7 @@
   subtitle="Edit every section of your homepage. Changes go live when you save."
 >
   {#snippet actions()}<a class="btn btn-sm" href="/" target="_blank"
-      >Open homepage ↗</a
+      >Open homepage</a
     >{/snippet}
 </PageHeader>
 

@@ -14,7 +14,7 @@
 >
 
 <h1 class="text-3xl font-bold tracking-tight">
-  Welcome{firstName ? `, ${firstName}` : ""} 👋
+  Welcome{firstName ? `, ${firstName}` : ""}
 </h1>
 <p class="mt-1 text-base-content/70">
   Everything about your account in one place.

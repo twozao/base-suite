@@ -1,3 +1,4 @@
+import { rateLimit, RATE_LIMITS } from "$lib/server/security/rate_limit"
 import { fail, redirect } from "@sveltejs/kit"
 import { z } from "zod"
 import { env } from "$env/dynamic/private"
@@ -10,9 +11,13 @@ import {
   invalidateUserSessions,
 } from "$lib/server/auth/session"
 import { sendVerificationEmail } from "$lib/server/auth/flows"
+import { unlinkProvider } from "$lib/server/auth/oauth_accounts"
+import { isOAuthProvider } from "$lib/signin_providers"
 import {
   checkPassword,
   deleteUser,
+  isLastAdmin,
+  hasPassword,
   updateEmail,
   updatePassword,
 } from "$lib/server/auth/users"
@@ -40,28 +45,33 @@ const emailForm = z.object({
   currentPassword,
 })
 
-const passwordForm = z
-  .object({
-    newPassword1: z
-      .string()
-      .min(1, "You must type a new password")
-      .min(
-        PASSWORD_MIN,
-        `The new password must be at least ${PASSWORD_MIN} characters long`,
-      )
-      .max(
-        PASSWORD_MAX,
-        `The new password can be at most ${PASSWORD_MAX} characters long`,
-      ),
-    newPassword2: z.string().min(1, "You must type the new password twice"),
-    currentPassword,
-  })
-  .refine((p) => p.newPassword1 === p.newPassword2, {
-    message: "The passwords don't match",
-    path: ["newPassword2"],
-  })
+// Accounts created through a provider have no password yet, so they set one without a current one.
+const passwordForm = (passwordSet: boolean) =>
+  z
+    .object({
+      newPassword1: z
+        .string()
+        .min(1, "You must type a new password")
+        .min(
+          PASSWORD_MIN,
+          `The new password must be at least ${PASSWORD_MIN} characters long`,
+        )
+        .max(
+          PASSWORD_MAX,
+          `The new password can be at most ${PASSWORD_MAX} characters long`,
+        ),
+      newPassword2: z.string().min(1, "You must type the new password twice"),
+      currentPassword: passwordSet ? currentPassword : z.string().optional(),
+    })
+    .refine((p) => p.newPassword1 === p.newPassword2, {
+      message: "The passwords don't match",
+      path: ["newPassword2"],
+    })
 
 const deleteForm = z.object({ currentPassword })
+const deleteConfirmForm = z.object({
+  confirmEmail: z.string().trim().min(1, "Type your email address to confirm"),
+})
 
 const profileText = (label: string, requiredHint: string) =>
   z
@@ -127,6 +137,18 @@ const wrongPassword = () =>
     errorFields: ["currentPassword"],
   })
 
+// Each check is limited per account, so a stolen session cannot be used to guess the password.
+const passwordOk = async (
+  db: App.Locals["db"],
+  userId: string,
+  password: string,
+) =>
+  (await rateLimit(
+    db,
+    `password-check:${userId}`,
+    RATE_LIMITS.passwordCheck,
+  )) && checkPassword(db, userId, password)
+
 export const actions: Actions = {
   toggleEmailSubscription: async ({ locals }) => {
     const user = requireUser(locals)
@@ -153,7 +175,14 @@ export const actions: Actions = {
     ])
     if (!form.ok) return form.failure
     const { email } = form.data
-    if (!(await checkPassword(locals.db, user.id, form.data.currentPassword)))
+    if (!(await hasPassword(locals.db, user.id))) {
+      return fail(400, {
+        errorMessage: "Set a password first, then you can change your email.",
+        errorFields: ["currentPassword"],
+        email,
+      })
+    }
+    if (!(await passwordOk(locals.db, user.id, form.data.currentPassword)))
       return wrongPassword()
     const result = await updateEmail(locals.db, user.id, email)
     if (!result.ok) {
@@ -169,14 +198,18 @@ export const actions: Actions = {
 
   updatePassword: async ({ request, locals }) => {
     const user = requireUser(locals)
+    const passwordSet = await hasPassword(locals.db, user.id)
     const form = await parseForm(
       request,
-      passwordForm,
+      passwordForm(passwordSet),
       ["newPassword1", "newPassword2", "currentPassword"],
       false,
     )
     if (!form.ok) return form.failure
-    if (!(await checkPassword(locals.db, user.id, form.data.currentPassword)))
+    if (
+      passwordSet &&
+      !(await passwordOk(locals.db, user.id, String(form.data.currentPassword)))
+    )
       return wrongPassword()
     await updatePassword(locals.db, user.id, form.data.newPassword1)
     // Other devices are signed out; this session stays.
@@ -186,18 +219,48 @@ export const actions: Actions = {
 
   deleteAccount: async ({ request, locals, cookies }) => {
     const user = requireUser(locals)
-    const form = await parseForm(
-      request,
-      deleteForm,
-      ["currentPassword"],
-      false,
-    )
-    if (!form.ok) return form.failure
-    if (!(await checkPassword(locals.db, user.id, form.data.currentPassword)))
-      return wrongPassword()
+    if (await hasPassword(locals.db, user.id)) {
+      const form = await parseForm(
+        request,
+        deleteForm,
+        ["currentPassword"],
+        false,
+      )
+      if (!form.ok) return form.failure
+      if (!(await passwordOk(locals.db, user.id, form.data.currentPassword)))
+        return wrongPassword()
+    } else {
+      const form = await parseForm(request, deleteConfirmForm, ["confirmEmail"])
+      if (!form.ok) return form.failure
+      if (form.data.confirmEmail.toLowerCase() !== user.email.toLowerCase()) {
+        return fail(400, {
+          errorMessage: "That is not your email address",
+          errorFields: ["confirmEmail"],
+        })
+      }
+    }
+    if (await isLastAdmin(locals.db, user.id))
+      return fail(400, {
+        errorMessage:
+          "You are the only admin. Make someone else an admin before deleting your account.",
+      })
     await deleteUser(locals.db, user.id)
     clearSessionCookie(cookies)
     redirect(303, "/")
+  },
+
+  unlinkOAuth: async ({ request, locals }) => {
+    const user = requireUser(locals)
+    const provider = (await request.formData()).get("provider")
+    if (!isOAuthProvider(provider))
+      return fail(400, { errorMessage: "Unknown provider" })
+    const result = await unlinkProvider(locals.db, user.id, provider)
+    redirect(
+      303,
+      result.ok
+        ? "/account/settings?oauth=disconnected"
+        : "/account/settings?oauth_error=last_method",
+    )
   },
 
   updateProfile: async ({ request, locals, url }) => {

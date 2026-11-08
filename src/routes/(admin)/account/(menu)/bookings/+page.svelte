@@ -34,6 +34,11 @@
           </div>
         </div>
         <div class="flex gap-2">
+          {#if b.provider === "native"}
+            <a class="btn btn-sm" href="/book/manage/{b.id}"
+              >Reschedule or cancel</a
+            >
+          {/if}
           {#if safe(b.reschedule_url)}<a
               class="btn btn-sm"
               href={safe(b.reschedule_url)}
@@ -63,7 +68,7 @@
   >
     {#each data.past as b (b.id)}
       <div class="flex justify-between gap-3 p-4 text-sm">
-        <span>{b.event_name} · {formatDateTime(b.start_time)}</span><StatusBadge
+        <span>{b.event_name} - {formatDateTime(b.start_time)}</span><StatusBadge
           status={b.status}
         />
       </div>

@@ -100,6 +100,9 @@
             <li>
               <a
                 href={link.href}
+                data-sveltekit-reload={link.href.endsWith(".xml")
+                  ? ""
+                  : undefined}
                 class="text-base-content/70 hover:text-base-content"
                 >{link.label}</a
               >
@@ -113,8 +116,13 @@
     <div
       class="mx-auto max-w-6xl px-4 sm:px-6 py-6 flex flex-wrap gap-2 justify-between text-sm text-base-content/60"
     >
-      <span>© {year} {site.brand.siteName}. {site.navigation.footerNote}</span>
-      <a href="/sitemap.xml" class="hover:text-base-content">Sitemap</a>
+      <span>(c) {year} {site.brand.siteName}. {site.navigation.footerNote}</span
+      >
+      <a
+        href="/sitemap.xml"
+        data-sveltekit-reload
+        class="hover:text-base-content">Sitemap</a
+      >
     </div>
   </div>
 </footer>

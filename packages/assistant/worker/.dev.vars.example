@@ -1,0 +1,3 @@
+ASSISTANT_SECRET_KEY=local-development-only
+ADMIN_TOKEN=local-development-only
+ALLOW_PRIVATE_MCP=true
