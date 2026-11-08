@@ -89,11 +89,13 @@ export const countUsers = async (db: Db) => {
   return Number(n)
 }
 
+/** Only a verified address counts, so typing someone's email elsewhere cannot attach things to their account. */
 export const findUserIdByEmail = async (db: Db, email: string) => {
   const row = await db
     .selectFrom("users")
     .select("id")
     .where("email", "=", normalizeEmail(email))
+    .where("email_verified", "=", 1)
     .executeTakeFirst()
   return row?.id ?? null
 }

@@ -11,27 +11,27 @@ Base Suite is a **modular business platform**: a small core plus independent mod
 |              Settings, Brand/Homepage/Navigation, Media, Audit log,  |
 |              Rate limiting, Email, Security headers                  |
 +----------------------------------------------------------------------+
-| Stack        SvelteKit, Kysely on SQLite (default) or Postgres,      |
-|              local disk media, Stripe, Resend, Calendly, any Node    |
-|              host (Postgres for serverless hosts)                    |
+| Stack        SvelteKit, Kysely on SQLite (default), Postgres or D1,  |
+|              media on disk or R2, Stripe, Resend, Calendly; any Node |
+|              host, or Cloudflare Workers                             |
 +----------------------------------------------------------------------+
 ```
 
 ## Data layer
 
-One schema, two engines. `src/lib/server/db/schema.ts` declares every table once as Kysely types; `src/lib/server/db/migrations/` builds them with portable DDL; `src/lib/server/db/index.ts` opens SQLite (better-sqlite3, WAL mode) or Postgres (pg) from `DATABASE_URL` and runs pending migrations on start. The app never notices which engine it is on because the rules below hold on both:
+One schema, three engines. `src/lib/server/db/schema.ts` declares every table once as Kysely types; `src/lib/server/db/migrations/` builds them with portable DDL; `src/lib/server/db/node.ts` opens SQLite (better-sqlite3, WAL mode) or Postgres (pg) from `DATABASE_URL`, `src/lib/server/db/d1.ts` is a Kysely driver for Cloudflare D1, and `index.ts` runs pending migrations on start (on D1, once per Worker instance). The app never notices which engine it is on because the rules below hold on both:
 
 - Ids are UUID strings generated in app code; a few append-only tables (audit log, chat messages, revisions, CRM activities) use integer autoincrement.
 - Timestamps are ISO-8601 strings (`2026-11-04T05:13:00.307Z`) on both engines, so comparisons are string comparisons and `nowIso()` is the only clock.
 - Booleans are 0/1 integers, JSON (tags, audit meta, settings values) is text parsed by `parseJson` / `parseStringList` at the boundary.
-- No engine-only SQL: `containsText(column, q)` does case-insensitive search, `onConflict(...).doUpdateSet(...)` does upserts, transactions wrap multi-row writes. Anything that used to be a database function or trigger (rate limit window, page view counter, chat unread counters, first-user admin) is a TypeScript function with a test.
+- No engine-only SQL: `containsText(column, q)` does case-insensitive search, `onConflict(...).doUpdateSet(...)` does upserts, transactions wrap multi-row writes. D1 has no transactions, so there a transaction runs its statements one by one; code that must not race, such as booking a slot, checks again after writing. Anything that used to be a database function or trigger (rate limit window, page view counter, chat unread counters, first-user admin) is a TypeScript function with a test.
 - The same test suite runs on an in-memory SQLite (`createTestDb()`) and, with `TEST_DATABASE_URL`, on a throwaway Postgres (CI does both).
 
 Adding an engine means adding a Kysely dialect in `index.ts` and a `now` default in the initial migration; MySQL is the obvious next one.
 
 ## Auth and sessions
 
-Accounts live in `users` (email, scrypt password hash, verified flag) with a `profiles` row for the customer-facing fields. A session is a random 256-bit token in an httpOnly cookie; only its SHA-256 is stored, so a database read cannot be replayed as a login. Sessions last 30 days and renew past half-life. One-time tokens (email verification, password reset) are hashed the same way and expire in hours. The first account created becomes the admin; later roles are granted in Admin -> Users. Code: `src/lib/server/auth/`.
+Accounts live in `users` (email, scrypt password hash, verified flag) with a `profiles` row for the customer-facing fields. A session is a random 256-bit token in an httpOnly cookie; only its SHA-256 is stored, so a database read cannot be replayed as a login. Sessions last 30 days and renew past half-life. One-time tokens (email verification, password reset) are hashed the same way and expire in hours. The first admin is made locally by the first sign-up, and on a deployed site only by a sign-up holding `PRIVATE_SETUP_CODE`; the last admin cannot delete their account. Later roles are granted in Admin -> Users. Code: `src/lib/server/auth/`.
 
 ## Installed vs active
 
@@ -83,16 +83,17 @@ Every public page --> /api/pv beacon --> Analytics (counters only)
 
 ### Available
 
-| Module                          | Category  | Depends on | What it adds                                                                    |
-| ------------------------------- | --------- | ---------- | ------------------------------------------------------------------------------- |
-| Pages & Blog (`cms`)            | Website   | none       | Pages at `/<slug>`, blog with tags, scheduled publishing, RSS, search, sitemap  |
-| Contact form (`contact`)        | Engage    | none       | Spam-protected form, inbox with statuses and notes, email alerts                |
-| Live chat (`chat`)              | Engage    | none       | Lazy widget, shared support inbox, customer portal conversation                 |
-| Online booking (`booking`)      | Engage    | none       | `/book` with Calendly embeds, signed webhook, bookings admin and portal         |
-| Newsletter (`newsletter`)       | Engage    | none       | Double opt-in, safe unsubscribe, CSV export                                     |
-| Subscriptions (`subscriptions`) | Sell      | none       | Stripe Checkout, billing portal, plans editor, webhook mirror                   |
-| CRM (`crm`)                     | Customers | none       | Auto-captured contacts, activity timeline, notes and calls, deals pipeline      |
-| Analytics (`analytics`)         | Insights  | none       | Cookie-free page views, top pages and referrers, Do Not Track and GPC respected |
+| Module                          | Category  | Depends on | What it adds                                                                               |
+| ------------------------------- | --------- | ---------- | ------------------------------------------------------------------------------------------ |
+| Pages & Blog (`cms`)            | Website   | none       | Pages at `/<slug>`, blog with tags, scheduled publishing, RSS, search, sitemap             |
+| Contact form (`contact`)        | Engage    | none       | Spam-protected form, inbox with statuses and notes, email alerts                           |
+| Live chat (`chat`)              | Engage    | none       | Lazy widget, shared support inbox, customer portal conversation                            |
+| Online booking (`booking`)      | Engage    | none       | Built-in scheduling with event types, availability and time zones; optional Calendly       |
+| Newsletter (`newsletter`)       | Engage    | none       | Double opt-in, safe unsubscribe, CSV export                                                |
+| Subscriptions (`subscriptions`) | Sell      | none       | Stripe Checkout, billing portal, plans editor, webhook mirror                              |
+| CRM (`crm`)                     | Customers | none       | Auto-captured contacts, activity timeline, notes and calls, deals pipeline                 |
+| Analytics (`analytics`)         | Insights  | none       | Cookie-free page views, top pages and referrers, Do Not Track and GPC respected            |
+| AI assistant (`assistant`)      | Engage    | none       | Chat from your own content, many providers, MCP connections. Lives in `packages/assistant` |
 
 The core is always on: auth and roles, admin and customer portals, homepage, brand and navigation editors, media library, settings and audit log.
 
@@ -147,6 +148,7 @@ The core is always on: auth and roles, admin and customer portals, homepage, bra
 
 ```
 init: open DATABASE_URL (SQLite file by default), run pending migrations
+      (Cloudflare: the D1 binding is opened and migrated on the first request instead)
 request
   +- securityHeaders  (CSP via svelte.config.js, HSTS, frame/referrer/permissions policies, CDN cache rules)
      +- database      (locals.db, one Kysely handle per process)

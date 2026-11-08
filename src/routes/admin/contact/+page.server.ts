@@ -35,6 +35,7 @@ export const load: PageServerLoad = async (event) => {
         "last_name",
         "email",
         "company_name",
+        "topic",
         "message_body",
         "status",
         "created_at",

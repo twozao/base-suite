@@ -1,9 +1,11 @@
 import { error, redirect } from "@sveltejs/kit"
 import { stripeClient } from "$lib/server/billing/stripe"
+import { requireModule } from "$lib/server/auth/staff"
 import { getOrCreateCustomerId } from "../../../subscription_helpers.server"
 import type { PageServerLoad } from "./$types"
 
 export const load: PageServerLoad = async ({ url, locals: { db, user } }) => {
+  requireModule("subscriptions")
   if (!user) {
     redirect(303, "/login")
   }

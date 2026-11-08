@@ -42,7 +42,7 @@
 
 <PageHeader
   title={c.name || c.email || "Contact"}
-  subtitle={[c.company, c.email].filter(Boolean).join(" · ")}
+  subtitle={[c.company, c.email].filter(Boolean).join(" - ")}
   back="/admin/crm"
 >
   {#snippet actions()}
@@ -82,7 +82,7 @@
           class="textarea w-full"
           rows="3"
           maxlength="5000"
-          placeholder="Log a note, call or meeting…"
+          placeholder="Log a note, call or meeting..."
           required
         ></textarea>
         <button class="btn btn-primary btn-sm w-fit">Add to timeline</button>
@@ -106,7 +106,7 @@
               <div class="text-sm">
                 <span class="font-medium">{KIND[a.kind]?.label ?? a.kind}</span>
                 <span class="text-base-content/60"
-                  >· {formatDateTime(a.created_at)}</span
+                  >- {formatDateTime(a.created_at)}</span
                 >
                 {#if href}<a class="link text-xs ml-1" {href}>open</a>{/if}
               </div>
@@ -183,7 +183,7 @@
           ></label
         >
         <p class="text-xs text-base-content/60">
-          Source: {c.source ?? "—"} · Added {formatDate(c.created_at)}
+          Source: {c.source ?? " - "} - Added {formatDate(c.created_at)}
         </p>
         <button class="btn btn-primary btn-sm">Save</button>
       </div>
@@ -199,7 +199,7 @@
           >
             <span class="truncate">{d.title}</span>
             <span class="shrink-0"
-              >{formatMoney(d.value_cents, d.currency)} ·
+              >{formatMoney(d.value_cents, d.currency)} -
               <span class="text-base-content/60">{stageLabel(d.stage)}</span
               ></span
             >

@@ -1,6 +1,5 @@
-import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises"
-import { join } from "node:path"
 import { env } from "$env/dynamic/private"
+import { platformBindings } from "./platform"
 import { randomToken } from "./security/crypto"
 
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024
@@ -73,38 +72,89 @@ export const validateUpload = async (file: File) => {
   return { bytes, type, name }
 }
 
-// Uploads live on local disk (MEDIA_DIR, default data/uploads) and are served by /media/<name>.
-// Names are unique and validated by MEDIA_NAME_RE, so a path can never leave the directory.
+// Uploads live in the R2 bucket bound as MEDIA on Cloudflare, otherwise on local disk (MEDIA_DIR, default
+// data/uploads). Names are unique and validated by MEDIA_NAME_RE, so a path can never leave the directory.
 const mediaDir = () => env.MEDIA_DIR || "data/uploads"
+const bucket = () => platformBindings().MEDIA
+const disk = async () => {
+  const [fs, path] = await Promise.all([
+    import("node:fs/promises"),
+    import("node:path"),
+  ])
+  return { fs, at: (name: string) => path.join(mediaDir(), name) }
+}
 
 export const mediaUrl = (name: string) => `/media/${name}`
 
 export const saveMedia = async (name: string, bytes: Uint8Array) => {
   if (!MEDIA_NAME_RE.test(name)) throw new Error("Invalid media name")
-  await mkdir(mediaDir(), { recursive: true })
-  await writeFile(join(mediaDir(), name), bytes, { flag: "wx" })
+  const b = bucket()
+  if (b) {
+    const ext = name.slice(name.lastIndexOf(".") + 1)
+    await b.put(name, bytes, {
+      httpMetadata: { contentType: CONTENT_TYPE_BY_EXT[ext] },
+      onlyIf: { etagDoesNotMatch: "*" },
+    })
+    return
+  }
+  const { fs, at } = await disk()
+  await fs.mkdir(mediaDir(), { recursive: true })
+  await fs.writeFile(at(name), bytes, { flag: "wx" })
 }
 
 export const deleteMedia = async (name: string) => {
   if (!MEDIA_NAME_RE.test(name)) throw new Error("Invalid media name")
-  await rm(join(mediaDir(), name), { force: true })
+  const b = bucket()
+  if (b) return void (await b.delete(name))
+  const { fs, at } = await disk()
+  await fs.rm(at(name), { force: true })
 }
 
 export const readMedia = async (name: string) => {
   if (!MEDIA_NAME_RE.test(name)) return null
+  const ext = name.slice(name.lastIndexOf(".") + 1)
   try {
-    const bytes = await readFile(join(mediaDir(), name))
-    const ext = name.slice(name.lastIndexOf(".") + 1)
-    return { bytes, type: CONTENT_TYPE_BY_EXT[ext] }
+    const b = bucket()
+    if (b) {
+      const obj = await b.get(name)
+      return obj
+        ? {
+            bytes: new Uint8Array(await obj.arrayBuffer()),
+            type: CONTENT_TYPE_BY_EXT[ext],
+          }
+        : null
+    }
+    const { fs, at } = await disk()
+    return {
+      bytes: await fs.readFile(at(name)),
+      type: CONTENT_TYPE_BY_EXT[ext],
+    }
   } catch {
     return null
   }
 }
 
+const LIST_LIMIT = 500
+
 export const listMedia = async () => {
+  const b = bucket()
+  if (b) {
+    const listed = await b.list({ limit: LIST_LIMIT })
+    const files = listed.objects
+      .filter((o) => MEDIA_NAME_RE.test(o.key))
+      .map((o) => ({
+        name: o.key,
+        size: o.size,
+        createdAt: o.uploaded.toISOString(),
+        url: mediaUrl(o.key),
+      }))
+      .sort((x, y) => y.name.localeCompare(x.name))
+    return { files, error: null }
+  }
+  const { fs, at } = await disk()
   let names: string[]
   try {
-    names = await readdir(mediaDir())
+    names = await fs.readdir(mediaDir())
   } catch {
     return { files: [], error: null }
   }
@@ -113,9 +163,9 @@ export const listMedia = async () => {
       .filter((n) => MEDIA_NAME_RE.test(n))
       .sort()
       .reverse()
-      .slice(0, 500)
+      .slice(0, LIST_LIMIT)
       .map(async (name) => {
-        const s = await stat(join(mediaDir(), name))
+        const s = await fs.stat(at(name))
         return {
           name,
           size: s.size,

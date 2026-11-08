@@ -63,7 +63,7 @@
       </a>
       {#if signedIn}
         <a href="/account" class="btn btn-ghost btn-sm">My account</a>
-      {:else}
+      {:else if site.signIn}
         <a href="/login/sign_in" class="btn btn-ghost btn-sm">Sign in</a>
       {/if}
       {#if site.navigation.ctaLabel && site.navigation.ctaHref}
@@ -107,12 +107,14 @@
           >
         </li>
         <li class="pt-2 flex gap-2">
-          <a
-            href={signedIn ? "/account" : "/login/sign_in"}
-            class="btn btn-outline flex-1"
-            onclick={() => (open = false)}
-            >{signedIn ? "My account" : "Sign in"}</a
-          >
+          {#if signedIn || site.signIn}
+            <a
+              href={signedIn ? "/account" : "/login/sign_in"}
+              class="btn btn-outline flex-1"
+              onclick={() => (open = false)}
+              >{signedIn ? "My account" : "Sign in"}</a
+            >
+          {/if}
           {#if site.navigation.ctaLabel && site.navigation.ctaHref}
             <a
               href={site.navigation.ctaHref}

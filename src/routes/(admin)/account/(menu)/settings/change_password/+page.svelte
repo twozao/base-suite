@@ -5,6 +5,8 @@
 
   let adminSection: Writable<string> = getContext("adminSection")
   adminSection.set("settings")
+
+  let { data } = $props()
 </script>
 
 <svelte:head>
@@ -33,11 +35,15 @@
       initialValue: "",
       inputType: "password",
     },
-    {
-      id: "currentPassword",
-      label: "Current Password",
-      initialValue: "",
-      inputType: "password",
-    },
+    ...(data.hasPassword
+      ? [
+          {
+            id: "currentPassword",
+            label: "Current Password",
+            initialValue: "",
+            inputType: "password",
+          },
+        ]
+      : []),
   ]}
 />

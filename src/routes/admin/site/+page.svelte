@@ -55,7 +55,7 @@
       >
     {:else if sectionForm.message}<span
         class="text-success text-sm"
-        role="status">✓ {sectionForm.message}</span
+        role="status">{sectionForm.message}</span
       >{/if}
   {/if}
 {/snippet}
@@ -70,7 +70,7 @@
         list="quick-links"
         bind:value={l.href}
         maxlength="500"
-        placeholder="/pricing or https://…"
+        placeholder="/pricing or https://..."
       />
     </label>
   </div>
@@ -82,7 +82,7 @@
 
 <PageHeader
   title="Brand & navigation"
-  subtitle="Your name, logo, colours, menus and footer — used across the whole site."
+  subtitle="Your name, logo, colours, menus and footer - used across the whole site."
 />
 
 <div class="space-y-6 max-w-4xl">
@@ -106,6 +106,15 @@
         rows={2}
         max={300}
       />
+      <label class="block">
+        <span class="mb-1 block text-sm font-medium">Theme</span>
+        <select class="select w-full" bind:value={brand.theme}>
+          {#each data.themes as t}<option value={t.id}>{t.label}</option>{/each}
+        </select>
+        <span class="mt-1 block text-xs text-base-content/60"
+          >{data.themes.find((t) => t.id === brand.theme)?.description}</span
+        >
+      </label>
       <div class="grid gap-4 sm:grid-cols-2">
         {#each [["Primary colour", "primaryColor"], ["Accent colour", "accentColor"]] as [label, key]}
           {@const k = key as "primaryColor" | "accentColor"}
@@ -149,7 +158,7 @@
         <ImageField
           label="Social share image"
           bind:value={brand.ogImageUrl}
-          hint="1200×630 image used when your site is shared."
+          hint="1200x630 image used when your site is shared."
         />
       </div>
       <div class="flex items-center gap-4">
@@ -235,7 +244,7 @@
               bind:value={s.url}
               max={300}
               mono
-              placeholder="https://…"
+              placeholder="https://..."
             />
           </div>
         {/snippet}
@@ -269,7 +278,7 @@
         bind:value={general.announcement}
         max={300}
         hint="Shown above the header on every page. Leave empty to hide."
-        placeholder="🎉 New: online booking is live"
+        placeholder="New: online booking is live"
       />
       <Field
         label="Public support email"

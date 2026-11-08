@@ -1,4 +1,4 @@
-import { fail } from "@sveltejs/kit"
+import { fail, redirect } from "@sveltejs/kit"
 import { z } from "zod"
 import { findUserByEmail } from "$lib/server/auth/users"
 import { mailConfigured, sendPasswordResetEmail } from "$lib/server/auth/flows"
@@ -7,9 +7,11 @@ import { rateLimit, RATE_LIMITS } from "$lib/server/security/rate_limit"
 import { emailField, parseAuthForm } from "../auth_forms"
 import type { Actions, PageServerLoad } from "./$types"
 
-export const load: PageServerLoad = async () => ({
-  mailConfigured: mailConfigured(),
-})
+export const load: PageServerLoad = async ({ parent }) => {
+  const { signin } = await parent()
+  if (!signin.password) redirect(303, "/login/sign_in")
+  return { mailConfigured: mailConfigured() }
+}
 
 const schema = z.object({ email: emailField })
 

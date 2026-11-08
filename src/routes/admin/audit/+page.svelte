@@ -23,7 +23,7 @@
 />
 {#if data.action}
   <p class="mb-4">
-    Filtered by <code>{data.action}</code> · <a class="link" href="?">clear</a>
+    Filtered by <code>{data.action}</code> - <a class="link" href="?">clear</a>
   </p>
 {/if}
 

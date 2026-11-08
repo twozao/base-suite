@@ -1,0 +1,26 @@
+# One Base Suite site on Cloudflare Workers. Copy the IDs that `wrangler d1 create` prints into
+# database_id. For the theme demos, ./setup.sh demo:* writes its own config per demo.
+name = "base-suite"
+main = "cloudflare/worker.js"
+compatibility_date = "2026-10-01"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = ".svelte-kit/cloudflare"
+binding = "ASSETS"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "base-suite"
+database_id = "replace-with-your-d1-database-id"
+
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "base-suite-media"
+
+# Sends booking reminders. Needs the CRON_SECRET secret.
+[triggers]
+crons = ["*/10 * * * *"]
+
+[observability]
+enabled = true

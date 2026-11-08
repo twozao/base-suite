@@ -1,5 +1,6 @@
 import { isModuleEnabled } from "$lib/modules"
-import { isSameOrigin } from "$lib/server/security/request"
+import { clientIp, isSameOrigin } from "$lib/server/security/request"
+import { rateLimit, RATE_LIMITS } from "$lib/server/security/rate_limit"
 import { countablePath, isBot, referrerHost } from "$lib/server/analytics"
 import { recordPageView } from "./record.server"
 import type { RequestHandler } from "./$types"
@@ -14,6 +15,14 @@ export const POST: RequestHandler = async (event) => {
     h.get("dnt") === "1" ||
     h.get("sec-gpc") === "1" ||
     isBot(h.get("user-agent"))
+  )
+    return NO_CONTENT()
+  if (
+    !(await rateLimit(
+      event.locals.db,
+      `pv:${clientIp(event)}`,
+      RATE_LIMITS.pageView,
+    ))
   )
     return NO_CONTENT()
   const text = await event.request.text()

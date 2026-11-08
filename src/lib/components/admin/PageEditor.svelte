@@ -49,7 +49,7 @@
     t
       .toLowerCase()
       .normalize("NFKD")
-      .replace(/[̀-ͯ]/g, "")
+      .replace(/[\u0300-\u036f]/g, "")
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "")
       .slice(0, 100)
@@ -134,7 +134,7 @@
             : ''}"
           bind:value={body}
           maxlength="200000"
-          placeholder="Write in Markdown. # Heading, **bold**, [link](https://…), ![image](https://…)"
+          placeholder="Write in Markdown. # Heading, **bold**, [link](https://...), ![image](https://...)"
         ></textarea>
         {#if errors.body_md}<span class="text-error text-sm"
             >{errors.body_md}</span

@@ -18,7 +18,7 @@
         type="search"
         name="q"
         value={data.q}
-        placeholder="Search pages and posts…"
+        placeholder="Search pages and posts..."
         maxlength="100"
         aria-label="Search"
         autofocus
@@ -28,7 +28,7 @@
 
   {#if data.q.length >= 2}
     <p class="mt-6 text-sm text-base-content/60">
-      {data.results.length} result{data.results.length === 1 ? "" : "s"} for “{data.q}”
+      {data.results.length} result{data.results.length === 1 ? "" : "s"} for "{data.q}"
     </p>
     <ul class="mt-4 divide-y divide-base-300">
       {#each data.results as r}

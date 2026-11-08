@@ -27,3 +27,10 @@ export const plansForDisplay = (plans: Plan[], signedIn: boolean) =>
     ctaLabel: p.ctaLabel,
     href: planHref(p, signedIn),
   }))
+
+/** Whether someone finishing sign-up goes to the plan picker. Staff run the site, so they never do. */
+export const shouldAskForPlan = (ctx: {
+  subscriptionsOn: boolean
+  askAfterSignUp: boolean
+  isStaff: boolean
+}) => ctx.subscriptionsOn && ctx.askAfterSignUp && !ctx.isStaff

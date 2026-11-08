@@ -5,6 +5,7 @@
   import SiteFooter from "$lib/components/site/SiteFooter.svelte"
   import ChatLauncher from "$lib/components/chat/ChatLauncher.svelte"
   import { afterNavigate } from "$app/navigation"
+  import { onMount } from "svelte"
 
   interface Props {
     children?: import("svelte").Snippet
@@ -15,6 +16,17 @@
   // Cookie-free page view beacon (Analytics module). Skipped for visitors
   // with Do Not Track or Global Privacy Control turned on.
   let lastPath = ""
+  // The assistant's bubble decides for itself whether this visitor may use it. It sits beside live chat when both are on.
+  onMount(() => {
+    if (!site.modules.assistant || document.getElementById("assistant-script"))
+      return
+    const s = document.createElement("script")
+    s.id = "assistant-script"
+    s.src = "/assistant/widget.js"
+    s.dataset.base = "/assistant"
+    if (site.modules.chat) s.dataset.offset = "88px"
+    document.body.append(s)
+  })
   afterNavigate(({ from }) => {
     if (!site.modules.analytics || location.pathname === lastPath) return
     const nav = navigator as Navigator & { globalPrivacyControl?: boolean }

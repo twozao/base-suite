@@ -39,16 +39,31 @@ export type CreateUserResult =
  */
 export const createUser = async (
   db: Db,
-  input: { email: string; password: string; fullName?: string | null },
+  input: {
+    email: string
+    /** Null for an account that only signs in through a provider. */
+    password: string | null
+    fullName?: string | null
+    emailVerified?: boolean
+    /** Makes this account the admin if there is none yet. The caller checks it may (see ownerClaim). */
+    claimOwner?: boolean
+  },
 ): Promise<CreateUserResult> => {
   const id = crypto.randomUUID()
   const email = normalizeEmail(input.email)
-  const password_hash = await hashPassword(input.password)
+  const password_hash = input.password
+    ? await hashPassword(input.password)
+    : null
   try {
     return await db.transaction().execute(async (trx) => {
       const inserted = await trx
         .insertInto("users")
-        .values({ id, email, password_hash })
+        .values({
+          id,
+          email,
+          password_hash,
+          email_verified: input.emailVerified ? 1 : 0,
+        })
         .returning(["id", "email", "email_verified", "created_at"])
         .executeTakeFirstOrThrow()
       await trx
@@ -60,7 +75,7 @@ export const createUser = async (
         .select("user_id")
         .limit(1)
         .executeTakeFirst()
-      const firstUser = !anyRole
+      const firstUser = !anyRole && !!input.claimOwner
       if (firstUser) {
         await trx
           .insertInto("user_roles")
@@ -83,13 +98,25 @@ export const signInWithPassword = async (
 ): Promise<SessionUser | null> => {
   const row = await findUserByEmail(db, email)
   if (!row || !(await verifyPassword(password, row.password_hash))) return null
-  await db
-    .updateTable("users")
-    .set({ last_sign_in_at: nowIso() })
-    .where("id", "=", row.id)
-    .execute()
+  await recordSignIn(db, row.id)
   return toSessionUser(row)
 }
+
+export const recordSignIn = (db: Db, userId: string) =>
+  db
+    .updateTable("users")
+    .set({ last_sign_in_at: nowIso() })
+    .where("id", "=", userId)
+    .execute()
+
+export const hasPassword = async (db: Db, userId: string) =>
+  !!(
+    await db
+      .selectFrom("users")
+      .select("password_hash")
+      .where("id", "=", userId)
+      .executeTakeFirst()
+  )?.password_hash
 
 export const checkPassword = async (
   db: Db,
@@ -148,6 +175,17 @@ export const markEmailVerified = (db: Db, userId: string) =>
 /** Removes the account; sessions, profile, roles and the Stripe customer link go with it (foreign keys cascade). */
 export const deleteUser = (db: Db, userId: string) =>
   db.deleteFrom("users").where("id", "=", userId).execute()
+
+/** True when this user is the only admin, so removing them would leave nobody in charge. */
+export const isLastAdmin = async (db: Db, userId: string) => {
+  const admins = await db
+    .selectFrom("user_roles")
+    .select("user_id")
+    .where("role", "=", "admin")
+    .limit(2)
+    .execute()
+  return admins.length === 1 && admins[0].user_id === userId
+}
 
 const TOKEN_TTL_MS: Record<TokenPurpose, number> = {
   verify_email: 24 * 60 * 60 * 1000,

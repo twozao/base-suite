@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { THEME_IDS } from "./theme"
 
 // Schemas + defaults for everything a site owner edits in the admin portal:
 // brand, navigation, homepage sections and pricing. Defaults make a fresh
@@ -60,6 +61,21 @@ export const ICONS = [
   "layers",
   "check",
   "search",
+  "factory",
+  "cog",
+  "plug",
+  "truck",
+  "cpu",
+  "wrench",
+  "leaf",
+  "document",
+  "phone",
+  "pin",
+  "award",
+  "briefcase",
+  "building",
+  "pen",
+  "code",
 ] as const
 export type IconName = (typeof ICONS)[number]
 
@@ -68,6 +84,7 @@ const cta = z.object({ label: text(60), href: linkHref.or(z.literal("")) })
 
 export const brandSchema = z.object({
   siteName: required(60),
+  theme: z.enum(THEME_IDS).default("fresh"),
   tagline: text(120),
   description: text(300),
   logoUrl: imageUrl,
@@ -182,14 +199,14 @@ export const planSchema = z.object({
     .trim()
     .regex(
       /^(price_[A-Za-z0-9]{6,})?$/,
-      "Stripe price ids look like price_123…",
+      "Stripe price ids look like price_123...",
     ),
   stripeProductId: z
     .string()
     .trim()
     .regex(
       /^(prod_[A-Za-z0-9]{6,})?$/,
-      "Stripe product ids look like prod_123…",
+      "Stripe product ids look like prod_123...",
     ),
   features: z.array(required(120)).max(15),
   highlighted: z.boolean(),
@@ -202,6 +219,8 @@ export const pricingSchema = z
     title: required(120),
     subtitle: text(300),
     plans: z.array(planSchema).min(1).max(6),
+    /** Show the plan picker to new customers after sign-up. Staff are never asked. */
+    askAfterSignUp: z.boolean().default(false),
     faq: z.array(z.object({ q: required(200), a: required(1000) })).max(12),
   })
   .refine(
@@ -219,9 +238,10 @@ export const pricingSchema = z
 
 export const DEFAULT_BRAND: z.output<typeof brandSchema> = {
   siteName: "Base Suite",
+  theme: "fresh",
   tagline: "Run your website, customers and support from one place",
   description:
-    "Base Suite gives small businesses a fast website with subscriptions, live chat, online booking and a content manager — all managed from one admin portal.",
+    "Base Suite gives small businesses a fast website with subscriptions, live chat, online booking and a content manager - all managed from one admin portal.",
   logoUrl: "",
   primaryColor: "#4f46e5",
   accentColor: "#f59e0b",
@@ -262,7 +282,7 @@ export const DEFAULT_NAVIGATION: z.output<typeof navigationSchema> = {
 export const DEFAULT_HOME: z.output<typeof homeSchema> = {
   hero: {
     eyebrow: "All-in-one for small businesses",
-    title: "Your website, customers and support —",
+    title: "Your website, customers and support  - ",
     highlight: "in one place",
     subtitle:
       "Publish pages and posts, take subscriptions, chat with visitors and let customers book time with you. One fast site, one admin portal.",
@@ -298,7 +318,7 @@ export const DEFAULT_HOME: z.output<typeof homeSchema> = {
       {
         icon: "calendar",
         title: "Online booking",
-        body: "Let customers pick a time with Calendly — bookings land in your portal.",
+        body: "Let customers pick a time with Calendly - bookings land in your portal.",
       },
       {
         icon: "layers",
@@ -327,7 +347,7 @@ export const DEFAULT_HOME: z.output<typeof homeSchema> = {
       },
       {
         title: "Add your content",
-        body: "Publish pages, blog posts and pricing — no code, no redeploys.",
+        body: "Publish pages, blog posts and pricing - no code, no redeploys.",
       },
       {
         title: "Start talking to customers",
@@ -367,7 +387,7 @@ export const DEFAULT_HOME: z.output<typeof homeSchema> = {
     items: [
       {
         q: "Do I need to know how to code?",
-        a: "No. Everything on this site — text, pages, blog posts, pricing and colours — is edited from the admin portal.",
+        a: "No. Everything on this site - text, pages, blog posts, pricing and colours - is edited from the admin portal.",
       },
       {
         q: "Can I use my own domain?",
@@ -375,7 +395,7 @@ export const DEFAULT_HOME: z.output<typeof homeSchema> = {
       },
       {
         q: "Is it really free?",
-        a: "The software is open source (MIT). Hosting on free tiers of Cloudflare and Supabase costs nothing to start.",
+        a: "The software is open source (MIT). It runs on a single small server with no database service to pay for.",
       },
     ],
   },
@@ -390,6 +410,7 @@ export const DEFAULT_HOME: z.output<typeof homeSchema> = {
 export const DEFAULT_PRICING: z.output<typeof pricingSchema> = {
   title: "Simple, transparent pricing",
   subtitle: "Start free. Upgrade when you're ready.",
+  askAfterSignUp: false,
   plans: [
     {
       id: "free",

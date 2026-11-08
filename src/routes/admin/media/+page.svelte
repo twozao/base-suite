@@ -60,7 +60,7 @@
     />
   </label>
   {#if uploading}<p class="mt-2 text-sm">
-      <span class="loading loading-spinner loading-xs"></span> Uploading…
+      <span class="loading loading-spinner loading-xs"></span> Uploading...
     </p>{/if}
 </form>
 
@@ -90,7 +90,7 @@
               type="button"
               class="btn btn-xs grow"
               onclick={() => copy(f.url)}
-              >{copied === f.url ? "Copied ✓" : "Copy URL"}</button
+              >{copied === f.url ? "Copied" : "Copy URL"}</button
             >
             <form
               method="POST"

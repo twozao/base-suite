@@ -1,0 +1,17 @@
+{
+  "name": "@base-suite/assistant",
+  "version": "0.1.0",
+  "description": "Knowledge-grounded AI chat with Needle 3 search, many model providers and MCP connections. Runs on Cloudflare Workers or Node.",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./drivers/d1": "./src/store/d1.ts",
+    "./embed/needle-worker": "./src/embed/needle-worker.ts",
+    "./embed/needle-node": "./src/embed/needle-node.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "*",
+    "zod": "^4.0.0"
+  }
+}

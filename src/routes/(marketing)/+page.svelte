@@ -8,6 +8,10 @@
   let { data } = $props()
   const home = $derived(data.home)
   const site = $derived(data.site)
+  // Minimal-style themes drop the product mock and centre the hero; an uploaded hero image still shows.
+  const centered = $derived(
+    site.heroLayout === "centered" && !home.hero.imageUrl,
+  )
   const initials = (name: string) =>
     name
       .split(/\s+/)
@@ -20,7 +24,7 @@
 <svelte:head>
   <title
     >{site.brand.siteName}{site.brand.tagline
-      ? ` — ${site.brand.tagline}`
+      ? ` - ${site.brand.tagline}`
       : ""}</title
   >
   <meta name="description" content={site.brand.description} />
@@ -31,9 +35,11 @@
 <!-- Hero -->
 <section class="bg-brand-glow">
   <div
-    class="mx-auto grid max-w-6xl items-center gap-12 px-4 sm:px-6 pt-16 pb-20 sm:pt-24 lg:grid-cols-2"
+    class="mx-auto grid max-w-6xl items-center gap-12 px-4 sm:px-6 pt-16 pb-20 sm:pt-24 {centered
+      ? 'text-center'
+      : 'lg:grid-cols-2'}"
   >
-    <div>
+    <div class={centered ? "mx-auto max-w-3xl" : ""}>
       {#if home.hero.eyebrow}
         <span class="badge badge-soft badge-primary mb-5"
           >{home.hero.eyebrow}</span
@@ -48,11 +54,15 @@
           >{/if}
       </h1>
       {#if home.hero.subtitle}
-        <p class="mt-6 text-lg text-base-content/70 max-w-xl leading-relaxed">
+        <p
+          class="mt-6 text-lg text-base-content/70 max-w-xl leading-relaxed {centered
+            ? 'mx-auto'
+            : ''}"
+        >
           {home.hero.subtitle}
         </p>
       {/if}
-      <div class="mt-8 flex flex-wrap gap-3">
+      <div class="mt-8 flex flex-wrap gap-3 {centered ? 'justify-center' : ''}">
         {#if home.hero.primaryCta.label && home.hero.primaryCta.href}
           <a href={home.hero.primaryCta.href} class="btn btn-primary btn-lg">
             {home.hero.primaryCta.label}
@@ -67,76 +77,80 @@
       </div>
     </div>
 
-    <div class="relative">
-      {#if home.hero.imageUrl}
-        <img
-          src={home.hero.imageUrl}
-          alt=""
-          class="w-full rounded-box border border-base-300 shadow-2xl"
-          fetchpriority="high"
-        />
-      {:else}
-        <!-- Illustrative product preview, pure HTML so it costs nothing to load -->
-        <div
-          class="rounded-box border border-base-300 bg-base-100 shadow-2xl overflow-hidden"
-          aria-hidden="true"
-        >
+    {#if !centered}
+      <div class="relative">
+        {#if home.hero.imageUrl}
+          <img
+            src={home.hero.imageUrl}
+            alt=""
+            class="w-full rounded-box border border-base-300 shadow-2xl"
+            fetchpriority="high"
+          />
+        {:else}
+          <!-- Illustrative product preview, pure HTML so it costs nothing to load -->
           <div
-            class="flex items-center gap-1.5 border-b border-base-300 px-4 py-3"
+            class="rounded-box border border-base-300 bg-base-100 shadow-2xl overflow-hidden"
+            aria-hidden="true"
           >
-            <span class="h-3 w-3 rounded-full bg-error/70"></span>
-            <span class="h-3 w-3 rounded-full bg-warning/70"></span>
-            <span class="h-3 w-3 rounded-full bg-success/70"></span>
-            <span class="ml-3 text-xs text-base-content/50"
-              >{site.brand.siteName} · Admin</span
+            <div
+              class="flex items-center gap-1.5 border-b border-base-300 px-4 py-3"
             >
-          </div>
-          <div class="grid grid-cols-[7rem_1fr]">
-            <div class="border-r border-base-300 p-3 space-y-2 text-xs">
-              {#each ["Dashboard", "Pages", "Blog", "Live chat", "Bookings"] as item, i}
-                <div
-                  class="rounded px-2 py-1.5 {i === 0
-                    ? 'bg-primary text-primary-content'
-                    : 'text-base-content/60'}"
-                >
-                  {item}
-                </div>
-              {/each}
+              <span class="h-3 w-3 rounded-full bg-error/70"></span>
+              <span class="h-3 w-3 rounded-full bg-warning/70"></span>
+              <span class="h-3 w-3 rounded-full bg-success/70"></span>
+              <span class="ml-3 text-xs text-base-content/50"
+                >{site.brand.siteName} - Admin</span
+              >
             </div>
-            <div class="p-4 space-y-3">
-              <div class="grid grid-cols-3 gap-2">
-                {#each [["Visitors", "2,481"], ["Open chats", "3"], ["Bookings", "12"]] as [label, value]}
-                  <div class="rounded-lg border border-base-300 p-3">
-                    <div class="text-[10px] text-base-content/50">{label}</div>
-                    <div class="text-lg font-bold">{value}</div>
+            <div class="grid grid-cols-[7rem_1fr]">
+              <div class="border-r border-base-300 p-3 space-y-2 text-xs">
+                {#each ["Dashboard", "Pages", "Blog", "Live chat", "Bookings"] as item, i}
+                  <div
+                    class="rounded px-2 py-1.5 {i === 0
+                      ? 'bg-primary text-primary-content'
+                      : 'text-base-content/60'}"
+                  >
+                    {item}
                   </div>
                 {/each}
               </div>
-              <div class="rounded-lg border border-base-300 p-3 space-y-2">
-                <div class="text-xs font-semibold">Live chat</div>
-                <div class="chat chat-start">
-                  <div
-                    class="chat-bubble chat-bubble-sm text-xs min-h-0 py-1.5"
-                  >
-                    Hi! Do you offer annual plans?
+              <div class="p-4 space-y-3">
+                <div class="grid grid-cols-3 gap-2">
+                  {#each [["Visitors", "2,481"], ["Open chats", "3"], ["Bookings", "12"]] as [label, value]}
+                    <div class="rounded-lg border border-base-300 p-3">
+                      <div class="text-[10px] text-base-content/50">
+                        {label}
+                      </div>
+                      <div class="text-lg font-bold">{value}</div>
+                    </div>
+                  {/each}
+                </div>
+                <div class="rounded-lg border border-base-300 p-3 space-y-2">
+                  <div class="text-xs font-semibold">Live chat</div>
+                  <div class="chat chat-start">
+                    <div
+                      class="chat-bubble chat-bubble-sm text-xs min-h-0 py-1.5"
+                    >
+                      Hi! Do you offer annual plans?
+                    </div>
+                  </div>
+                  <div class="chat chat-end">
+                    <div
+                      class="chat-bubble chat-bubble-primary text-xs min-h-0 py-1.5"
+                    >
+                      Yes - save 20% yearly
+                    </div>
                   </div>
                 </div>
-                <div class="chat chat-end">
-                  <div
-                    class="chat-bubble chat-bubble-primary text-xs min-h-0 py-1.5"
-                  >
-                    Yes — save 20% yearly 🎉
-                  </div>
-                </div>
+                <div
+                  class="h-16 rounded-lg bg-gradient-to-r from-primary/20 via-primary/40 to-accent/40"
+                ></div>
               </div>
-              <div
-                class="h-16 rounded-lg bg-gradient-to-r from-primary/20 via-primary/40 to-accent/40"
-              ></div>
             </div>
           </div>
-        </div>
-      {/if}
-    </div>
+        {/if}
+      </div>
+    {/if}
   </div>
 </section>
 
@@ -215,7 +229,7 @@
                 class="h-4 w-4 fill-current"
               />{/each}
           </div>
-          <blockquote class="mt-4 grow leading-relaxed">“{t.quote}”</blockquote>
+          <blockquote class="mt-4 grow leading-relaxed">"{t.quote}"</blockquote>
           <figcaption class="mt-6 flex items-center gap-3">
             {#if t.avatarUrl}
               <img
@@ -253,7 +267,7 @@
     <PricingCards plans={data.plans} />
     <p class="mt-8 text-center">
       <a href="/pricing" class="link link-primary"
-        >Compare plans and read the pricing FAQ →</a
+        >Compare plans and read the pricing FAQ -></a
       >
     </p>
   </Section>

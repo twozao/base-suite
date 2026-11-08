@@ -11,3 +11,9 @@ node_modules
 pnpm-lock.yaml
 package-lock.json
 yarn.lock
+
+packages/assistant/src/vendor/
+packages/assistant/worker/
+packages/assistant/src/ui/
+packages/assistant/src/embed/needle-thread.cjs
+packages/assistant/scripts/

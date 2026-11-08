@@ -63,7 +63,7 @@
             >{/if}
         </div>
         <div class="text-xs opacity-60 truncate">
-          {c.visitor_email ?? ""}{c.page_url ? ` · from ${c.page_url}` : ""}
+          {c.visitor_email ?? ""}{c.page_url ? ` - from ${c.page_url}` : ""}
         </div>
       </div>
       <div class="flex flex-col items-end gap-1 shrink-0">
@@ -75,7 +75,7 @@
         </div>
         <span class="text-xs opacity-60"
           >{timeAgo(c.last_message_at)}{c.assigned_to === data.me
-            ? " · yours"
+            ? " - yours"
             : ""}</span
         >
       </div>

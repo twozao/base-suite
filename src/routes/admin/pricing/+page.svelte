@@ -28,7 +28,7 @@
   subtitle="Plans shown on /pricing, the homepage and in customer billing."
 >
   {#snippet actions()}<a class="btn btn-sm" href="/pricing" target="_blank"
-      >Open pricing page ↗</a
+      >Open pricing page</a
     >{/snippet}
 </PageHeader>
 
@@ -48,7 +48,7 @@
     <span
       >Stripe is in <strong>{data.stripeMode}</strong> mode. Paste each plan's
       <em>price id</em>
-      and <em>product id</em> from Stripe → Product catalogue. Plans without a price
+      and <em>product id</em> from Stripe -> Product catalogue. Plans without a price
       id are free (price $0) or go to the contact form.</span
     >
   </div>
@@ -78,6 +78,28 @@
 
   <section class="card bg-base-100 border border-base-300">
     <div class="card-body gap-4">
+      <h2 class="card-title">After sign-up</h2>
+      <label class="flex items-start gap-3">
+        <input
+          type="checkbox"
+          class="checkbox checkbox-sm mt-1"
+          bind:checked={pricing.askAfterSignUp}
+        />
+        <span>
+          <span class="block font-medium"
+            >Ask new customers to choose a plan</span
+          >
+          <span class="block text-sm text-base-content/70">
+            Off sends them straight to their account, where plans stay available
+            under Billing. Staff are never asked.
+          </span>
+        </span>
+      </label>
+    </div>
+  </section>
+
+  <section class="card bg-base-100 border border-base-300">
+    <div class="card-body gap-4">
       <h2 class="card-title">Plans</h2>
       <ListEditor
         bind:items={pricing.plans}
@@ -96,7 +118,7 @@
           ctaLabel: "",
         })}
         label={(p) =>
-          `${p.name || "New plan"}${p.highlighted ? " ★" : ""}${p.stripePriceId ? "" : " · not connected to Stripe"}`}
+          `${p.name || "New plan"}${p.highlighted ? " (highlighted)" : ""}${p.stripePriceId ? "" : " - not connected to Stripe"}`}
       >
         {#snippet item(p)}
           <div class="grid gap-3 sm:grid-cols-3">
@@ -148,7 +170,7 @@
                 type="checkbox"
                 class="checkbox checkbox-sm"
                 bind:checked={p.highlighted}
-              /> Highlight as “Most popular”</label
+              /> Highlight as "Most popular"</label
             >
           </div>
           <div class="grid gap-3 sm:grid-cols-2">
@@ -157,14 +179,14 @@
               bind:value={p.stripePriceId}
               max={100}
               mono
-              placeholder="price_…"
+              placeholder="price_..."
             />
             <Field
               label="Stripe product id"
               bind:value={p.stripeProductId}
               max={100}
               mono
-              placeholder="prod_…"
+              placeholder="prod_..."
               hint="Needed to recognise existing subscribers"
             />
           </div>

@@ -10,6 +10,7 @@ describe("listUsers", () => {
       email: "ann@example.com",
       password: "pw-pw-pw",
       fullName: "Ann Lee",
+      claimOwner: true,
     })
     await createUser(db, { email: "bob@example.com", password: "pw-pw-pw" })
     const annId = (a as { user: { id: string } }).user.id
@@ -43,6 +44,13 @@ describe("listUsers", () => {
       (await listUsers(db, { search: "ACME" })).users.map((u) => u.email),
     ).toEqual(["ann@example.com"])
     expect((await listUsers(db, { search: "%" })).total).toBe(0)
-    expect(await findUserIdByEmail(db, "BOB@example.com")).not.toBeNull()
+    // Bob never verified his address, so it links nothing; Ann's does once verified.
+    expect(await findUserIdByEmail(db, "BOB@example.com")).toBeNull()
+    await db
+      .updateTable("users")
+      .set({ email_verified: 1 })
+      .where("id", "=", annId)
+      .execute()
+    expect(await findUserIdByEmail(db, "ANN@example.com")).toBe(annId)
   })
 })

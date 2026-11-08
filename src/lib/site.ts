@@ -10,6 +10,9 @@ export type PublicSite = {
   navigation: Navigation
   announcement: string
   themeCss: string
+  /** False hides the Sign in links; staff still sign in at /login/sign_in. */
+  signIn: boolean
+  heroLayout: "split" | "centered"
   modules: {
     chat: boolean
     booking: boolean
@@ -19,5 +22,10 @@ export type PublicSite = {
     newsletter: boolean
     analytics: boolean
     crm: boolean
+    assistant: boolean
+    helpdesk: boolean
+    kb: boolean
+    forms: boolean
+    projects: boolean
   }
 }

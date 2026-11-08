@@ -83,7 +83,7 @@
                   : "pending"}
             /></td
           >
-          <td class="text-sm">{r.source ?? "—"}</td>
+          <td class="text-sm">{r.source ?? " - "}</td>
           <td class="text-sm whitespace-nowrap">{formatDate(r.created_at)}</td>
           <td class="text-right">
             <form

@@ -2,6 +2,10 @@ import { error } from "@sveltejs/kit"
 import { requireModule } from "$lib/server/auth/staff"
 import { getSettings } from "$lib/server/settings"
 import { calendlyEmbedUrl } from "$lib/server/booking/calendly"
+import {
+  listEventTypes,
+  publicEventType,
+} from "$lib/server/booking/event_types"
 import type { PageServerLoad } from "./$types"
 
 export const load: PageServerLoad = async ({ locals, url, setHeaders }) => {
@@ -26,6 +30,9 @@ export const load: PageServerLoad = async ({ locals, url, setHeaders }) => {
 
   return {
     intro: settings.booking.intro,
+    native: (await listEventTypes(locals.db, { activeOnly: true })).map(
+      publicEventType,
+    ),
     eventTypes: settings.booking.eventTypes.map((t) => ({
       label: t.label,
       description: t.description,

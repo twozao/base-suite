@@ -1,3 +1,4 @@
+import { LOCALE_CODES } from "../../i18n"
 import { z } from "zod"
 import type { Db } from "../db"
 import { containsText } from "../db/query"
@@ -26,6 +27,12 @@ export const RESERVED_SLUGS = new Set([
   "favicon",
   "robots",
   "p",
+  "assistant",
+  "help",
+  "forms",
+  "ticket",
+  "newsletter",
+  ...LOCALE_CODES,
 ])
 
 export const SLUG_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/

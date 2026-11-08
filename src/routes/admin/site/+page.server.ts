@@ -1,6 +1,7 @@
 import { requirePermission } from "$lib/server/auth/staff"
 import { getSettings } from "$lib/server/settings"
 import { saveJsonSetting } from "$lib/server/admin_forms"
+import { THEMES, THEME_IDS } from "$lib/server/theme"
 import type { Actions, PageServerLoad } from "./$types"
 
 export const load: PageServerLoad = async (event) => {
@@ -21,6 +22,7 @@ export const load: PageServerLoad = async (event) => {
     navigation: s.navigation,
     general: s.general,
     pages,
+    themes: THEME_IDS.map((id) => ({ id, ...THEMES[id] })),
   }
 }
 

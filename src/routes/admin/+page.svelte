@@ -77,7 +77,7 @@
               {b.invitee_name || b.invitee_email}
             </div>
             <div class="text-xs opacity-70">
-              {b.event_name} · {formatDateTime(b.start_time)}
+              {b.event_name} - {formatDateTime(b.start_time)}
             </div>
           </div>
         {:else}

@@ -20,7 +20,7 @@
 
 <PageHeader
   title="CRM contacts"
-  subtitle="Everyone who's reached out — captured automatically from forms, chats, bookings and signups."
+  subtitle="Everyone who's reached out - captured automatically from forms, chats, bookings and signups."
 >
   {#snippet actions()}
     <a href="/admin/crm/deals" class="btn btn-sm">Deals pipeline</a>
@@ -125,9 +125,9 @@
                 {c.email}
               </div>{/if}
           </td>
-          <td>{c.company ?? "—"}</td>
+          <td>{c.company ?? " - "}</td>
           <td><StatusBadge status={c.status} /></td>
-          <td class="text-sm">{SOURCE[c.source ?? ""] ?? c.source ?? "—"}</td>
+          <td class="text-sm">{SOURCE[c.source ?? ""] ?? c.source ?? " - "}</td>
           <td class="whitespace-nowrap text-sm"
             >{timeAgo(c.last_activity_at)}</td
           >

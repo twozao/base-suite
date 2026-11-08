@@ -9,8 +9,21 @@ export const RATE_LIMITS = {
   chatMessage: { windowSeconds: 60, max: 20 },
   chatPoll: { windowSeconds: 60, max: 120 },
   signIn: { windowSeconds: 900, max: 10 },
+  oauthStart: { windowSeconds: 900, max: 30 },
+  bookingCreate: { windowSeconds: 3600, max: 10 },
+  assistantChat: { windowSeconds: 60, max: 20 },
+  ticketCreate: { windowSeconds: 3600, max: 10 },
+  ticketReply: { windowSeconds: 600, max: 20 },
+  kbVote: { windowSeconds: 3600, max: 30 },
+  formSubmit: { windowSeconds: 600, max: 10 },
+  bookingSlots: { windowSeconds: 60, max: 120 },
   signUp: { windowSeconds: 3600, max: 5 },
   passwordReset: { windowSeconds: 3600, max: 5 },
+  /** Per account, whatever the address: stops guessing one password from many machines. */
+  signInAccount: { windowSeconds: 3600, max: 30 },
+  passwordCheck: { windowSeconds: 900, max: 10 },
+  pageView: { windowSeconds: 60, max: 60 },
+  search: { windowSeconds: 60, max: 30 },
 } satisfies Record<string, RateLimitRule>
 
 /**

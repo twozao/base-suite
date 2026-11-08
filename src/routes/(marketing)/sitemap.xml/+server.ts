@@ -2,12 +2,32 @@ import type { RequestHandler } from "@sveltejs/kit"
 import * as sitemap from "super-sitemap"
 import { isModuleEnabled } from "$lib/modules"
 import { publishedPosts } from "$lib/server/posts"
+import { listEventTypes } from "$lib/server/booking/event_types"
+import { publishedArticles } from "$lib/server/kb"
 
 // Rendered on request (not prerendered) so published CMS pages appear without
 // a rebuild. Cached at the CDN for an hour.
 export const GET: RequestHandler = async ({ locals, setHeaders, url }) => {
+  const helpSlugs = isModuleEnabled("kb")
+    ? (
+        await publishedArticles(locals.db).select("slug").limit(5000).execute()
+      ).map((a) => a.slug)
+    : []
+  const formSlugs = isModuleEnabled("forms")
+    ? (
+        await locals.db
+          .selectFrom("forms")
+          .select("slug")
+          .where("active", "=", 1)
+          .limit(500)
+          .execute()
+      ).map((f) => f.slug)
+    : []
   let slugs: string[] = []
   let postSlugs: string[] = []
+  const bookSlugs = isModuleEnabled("booking")
+    ? (await listEventTypes(locals.db, { activeOnly: true })).map((t) => t.slug)
+    : []
   if (isModuleEnabled("cms")) {
     const [pages, posts] = await Promise.all([
       locals.db
@@ -28,11 +48,24 @@ export const GET: RequestHandler = async ({ locals, setHeaders, url }) => {
       ".*\\(admin\\).*", // routes within the (admin) group
       "^/admin.*",
       "^/api.*",
-      "^/search$",
-      ...(isModuleEnabled("booking") ? [] : ["^/book$"]),
-      ...(isModuleEnabled("subscriptions") ? [] : ["^/pricing$"]),
-      ...(isModuleEnabled("contact") ? [] : ["^/contact_us$"]),
+      // Route ids still hold the (marketing) group here, so these match on the tail.
+      "/search$",
+      "/login",
+      "/newsletter/(confirm|unsubscribe)$",
+      "/book/manage",
+      "/ticket/",
+      ...(isModuleEnabled("kb") ? [] : ["/help($|/)"]),
+      ...(isModuleEnabled("forms") ? [] : ["/forms/"]),
+      ...(isModuleEnabled("booking") ? [] : ["/book($|/)"]),
+      ...(isModuleEnabled("subscriptions") ? [] : ["/pricing$"]),
+      ...(isModuleEnabled("contact") ? [] : ["/contact_us$"]),
     ],
-    paramValues: { "/[slug]": slugs, "/blog/[slug]": postSlugs },
+    paramValues: {
+      "/[slug]": slugs,
+      "/blog/[slug]": postSlugs,
+      ...(isModuleEnabled("booking") ? { "/book/[slug]": bookSlugs } : {}),
+      ...(isModuleEnabled("kb") ? { "/help/[slug]": helpSlugs } : {}),
+      ...(isModuleEnabled("forms") ? { "/forms/[slug]": formSlugs } : {}),
+    },
   })
 }

@@ -46,7 +46,7 @@
       <a
         href="/blog"
         class="text-sm text-base-content/60 hover:text-base-content"
-        >← All posts</a
+        >All posts</a
       >
       {#if post.tags.length}
         <div class="mt-6 flex flex-wrap gap-1">
@@ -69,11 +69,11 @@
       <p class="mt-6 text-sm text-base-content/60">
         {#if post.author_name}<span class="font-medium text-base-content"
             >{post.author_name}</span
-          > ·
+          > -
         {/if}
         <time datetime={post.published_at}>{formatDate(post.published_at)}</time
         >
-        · {data.readingMinutes} min read
+        - {data.readingMinutes} min read
       </p>
     </div>
   </header>

@@ -37,7 +37,7 @@
     <div class="grow space-y-2">
       <input
         class="input input-sm w-full font-mono text-xs"
-        placeholder="https://… or choose from Media"
+        placeholder="https://... or choose from Media"
         maxlength="1000"
         bind:value
       />

@@ -37,7 +37,7 @@
     {#if p.status === "published"}<a
         class="btn btn-sm"
         href="/blog/{p.slug}"
-        target="_blank">View live ↗</a
+        target="_blank">View live</a
       >{/if}
   {/snippet}
 </PageHeader>

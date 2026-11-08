@@ -3,6 +3,8 @@ import type { SessionInfo, SessionUser } from "$lib/server/auth/session"
 import type { StaffContext } from "$lib/server/auth/staff"
 
 declare global {
+  /** True in the Cloudflare build. Vite replaces it, so code for the other platform is left out. */
+  const __CLOUDFLARE__: boolean
   namespace App {
     interface Locals {
       db: Db
@@ -13,7 +15,10 @@ declare global {
     }
     // interface PageData {}
     // interface Error {}
-    // interface Platform {}
+    interface Platform {
+      env: import("$lib/server/platform").Bindings & Record<string, unknown>
+      ctx: import("@cloudflare/workers-types").ExecutionContext
+    }
   }
 }
 

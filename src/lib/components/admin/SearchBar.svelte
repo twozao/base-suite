@@ -2,7 +2,7 @@
   import type { Snippet } from "svelte"
   let {
     q = "",
-    placeholder = "Search…",
+    placeholder = "Search...",
     children,
   }: { q?: string; placeholder?: string; children?: Snippet } = $props()
 </script>

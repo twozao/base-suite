@@ -24,6 +24,7 @@ export const load: PageServerLoad = async ({ params, locals, setHeaders }) => {
   return {
     page: {
       title: page.title,
+      excerpt: page.excerpt ?? "",
       html: page.body_html,
       metaTitle: page.seo_title || page.title,
       metaDescription:

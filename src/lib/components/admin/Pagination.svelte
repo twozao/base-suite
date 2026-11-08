@@ -13,18 +13,18 @@
 {#if pages > 1}
   <nav class="flex items-center justify-between mt-4" aria-label="Pagination">
     <span class="text-sm opacity-70">
-      {total} total · page {page} of {pages}
+      {total} total - page {page} of {pages}
     </span>
     <div class="join">
       <a
         class="join-item btn btn-sm {page <= 1 ? 'btn-disabled' : ''}"
         href={href(page - 1)}
-        aria-disabled={page <= 1}>«</a
+        aria-disabled={page <= 1}>Prev</a
       >
       <a
         class="join-item btn btn-sm {page >= pages ? 'btn-disabled' : ''}"
         href={href(page + 1)}
-        aria-disabled={page >= pages}>»</a
+        aria-disabled={page >= pages}>Next</a
       >
     </div>
   </nav>

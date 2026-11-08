@@ -32,8 +32,8 @@ export const actions: Actions = {
       try {
         await saveMedia(v.name, v.bytes)
       } catch (e) {
-        const reason = e instanceof Error ? e.message : "unknown error"
-        return fail(500, { error: `Upload failed: ${reason}`, uploaded })
+        console.error("media upload failed", e instanceof Error ? e.message : e)
+        return fail(500, { error: `${file.name}: upload failed`, uploaded })
       }
       uploaded.push(v.name)
     }

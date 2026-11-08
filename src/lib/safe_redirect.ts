@@ -1,6 +1,6 @@
 /**
  * Returns `next` only if it is a same-site relative path, otherwise `fallback`.
- * Blocks open redirects such as `//evil.com`, `/\evil.com` and `https://…`.
+ * Blocks open redirects such as `//evil.com`, `/\evil.com` and `https://...`.
  */
 export const safeNextPath = (
   next: string | null | undefined,

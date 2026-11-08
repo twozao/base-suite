@@ -23,7 +23,7 @@ export const mailConfigured = () =>
   !!env.PRIVATE_RESEND_API_KEY &&
   !!(env.PRIVATE_FROM_EMAIL || env.PRIVATE_FROM_ADMIN_EMAIL)
 
-const fromEmail = () =>
+export const fromEmail = () =>
   env.PRIVATE_FROM_EMAIL || env.PRIVATE_FROM_ADMIN_EMAIL || ""
 
 export const sendVerificationEmail = async (

@@ -17,7 +17,7 @@
     {#if p.status === "published"}<a
         class="btn btn-sm"
         href="/{p.slug}"
-        target="_blank">View live ↗</a
+        target="_blank">View live</a
       >{/if}
   {/snippet}
 </PageHeader>
@@ -51,7 +51,7 @@
         {#each data.revisions as r, i (r.id)}
           <li class="flex items-center justify-between py-2 text-sm">
             <span
-              >{formatDateTime(r.created_at)} · {r.title}{i === 0
+              >{formatDateTime(r.created_at)} - {r.title}{i === 0
                 ? " (latest)"
                 : ""}</span
             >

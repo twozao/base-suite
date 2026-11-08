@@ -18,6 +18,7 @@ export const load: PageServerLoad = async (event) => {
       chat: isModuleEnabled("chat"),
       booking: isModuleEnabled("booking"),
       contact: isModuleEnabled("contact"),
+      cms: isModuleEnabled("cms"),
     },
   }
 }
@@ -51,6 +52,13 @@ const save = async (
 }
 
 export const actions: Actions = {
+  blog: async (event) => {
+    const f = await event.request.formData()
+    return save(event, "blog", {
+      title: str(f, "title"),
+      intro: str(f, "intro"),
+    })
+  },
   chat: async (event) => {
     const f = await event.request.formData()
     return save(event, "chat", {
@@ -75,6 +83,7 @@ export const actions: Actions = {
     return save(event, "booking", {
       enabled: bool(f, "enabled"),
       intro: str(f, "intro"),
+      reminderHours: Number(f.get("reminderHours") ?? 24),
       eventTypes,
     })
   },
@@ -83,6 +92,17 @@ export const actions: Actions = {
     return save(event, "contact", {
       notifyAdmin: bool(f, "notifyAdmin"),
       successMessage: str(f, "successMessage"),
+      intro: str(f, "intro"),
+      topics: str(f, "topics")
+        .split("\n")
+        .map((t) => t.trim())
+        .filter(Boolean),
+      askPhone: bool(f, "askPhone"),
+      askCompany: bool(f, "askCompany"),
+      autoReply: bool(f, "autoReply"),
+      phone: str(f, "phone"),
+      address: str(f, "address"),
+      hours: str(f, "hours"),
     })
   },
 }

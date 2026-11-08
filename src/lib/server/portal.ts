@@ -22,7 +22,14 @@ export const userSubscription = async (db: Db, userId: string) => {
 export const userUpcomingBookings = (db: Db, userId: string, limit = 3) =>
   db
     .selectFrom("bookings")
-    .select(["id", "event_name", "start_time", "reschedule_url", "cancel_url"])
+    .select([
+      "id",
+      "provider",
+      "event_name",
+      "start_time",
+      "reschedule_url",
+      "cancel_url",
+    ])
     .where("user_id", "=", userId)
     .where("status", "=", "scheduled")
     .where("start_time", ">=", nowIso())
@@ -35,6 +42,7 @@ export const userBookings = (db: Db, userId: string) =>
     .selectFrom("bookings")
     .select([
       "id",
+      "provider",
       "event_name",
       "start_time",
       "end_time",

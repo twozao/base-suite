@@ -7,41 +7,34 @@
   let { data } = $props()
 </script>
 
-<PageHeader title="Bookings" subtitle="Meetings booked through Calendly">
+<PageHeader title="Bookings" subtitle="Meetings booked on your site">
   {#snippet actions()}
-    <a class="btn btn-sm" href="/admin/settings#booking">Booking settings</a>
-    <a
-      class="btn btn-sm"
-      href="https://calendly.com/app/scheduled_events/user/me"
-      target="_blank"
-      rel="noopener noreferrer">Calendly ↗</a
-    >
+    {#if data.canConfigure}
+      <a class="btn btn-sm" href="/admin/bookings/event-types">Event types</a>
+      <a class="btn btn-sm" href="/admin/bookings/availability">Availability</a>
+    {/if}
+    <a class="btn btn-sm" href="/book" target="_blank">Booking page</a>
   {/snippet}
 </PageHeader>
 
-{#if !data.webhookConfigured}
+{#if data.calendlyNeedsWebhook}
   <div role="alert" class="alert alert-warning mb-4">
     <span
-      >Bookings appear here once <code
+      >Meetings booked through your Calendly links appear here once <code
         >PRIVATE_CALENDLY_WEBHOOK_SIGNING_KEY</code
-      >
-      is set and a Calendly webhook points to
-      <code>/api/webhooks/calendly</code>. See docs/MODULES.md.</span
+      > is set. See docs/MODULES.md.</span
     >
   </div>
 {/if}
 
 <div role="tablist" class="tabs tabs-box tabs-sm mb-4 w-fit">
-  <a
-    role="tab"
-    class="tab {data.view === 'upcoming' ? 'tab-active' : ''}"
-    href="?view=upcoming">Upcoming</a
-  >
-  <a
-    role="tab"
-    class="tab {data.view === 'past' ? 'tab-active' : ''}"
-    href="?view=past">Past</a
-  >
+  {#each ["upcoming", "past", "canceled"] as v}
+    <a
+      role="tab"
+      class="tab capitalize {data.view === v ? 'tab-active' : ''}"
+      href="?view={v}">{v}</a
+    >
+  {/each}
 </div>
 <SearchBar q={data.q} placeholder="Search invitee or event"
   ><input type="hidden" name="view" value={data.view} /></SearchBar
@@ -56,14 +49,23 @@
     <tbody>
       {#each data.rows as b (b.id)}
         <tr>
-          <td class="whitespace-nowrap">{formatDateTime(b.start_time)}</td>
+          <td class="whitespace-nowrap">
+            {#if b.provider === "native"}
+              <a class="link" href="/admin/bookings/{b.id}"
+                >{formatDateTime(b.start_time)}</a
+              >
+            {:else}{formatDateTime(b.start_time)}{/if}
+          </td>
           <td>
-            {#if b.user_id}<a class="link" href="/admin/users/{b.user_id}"
-                >{b.invitee_name || b.invitee_email}</a
-              >{:else}{b.invitee_name || "—"}{/if}
+            {b.invitee_name || " - "}
             <div class="text-xs opacity-60">{b.invitee_email}</div>
           </td>
-          <td>{b.event_name ?? "—"}</td>
+          <td>
+            {b.event_name ?? " - "}
+            {#if b.provider === "calendly"}<div class="text-xs opacity-60">
+                Calendly
+              </div>{/if}
+          </td>
           <td
             ><StatusBadge status={b.status} />{#if b.cancel_reason}<div
                 class="text-xs opacity-60 mt-1"

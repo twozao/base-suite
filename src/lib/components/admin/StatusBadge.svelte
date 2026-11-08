@@ -11,6 +11,7 @@
     archived: "badge-neutral",
     scheduled: "badge-success",
     canceled: "badge-error",
+    no_show: "badge-warning",
     active: "badge-success",
     trialing: "badge-info",
     past_due: "badge-warning",

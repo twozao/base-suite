@@ -17,4 +17,14 @@ export const InstalledModules = {
   crm: true, // Contacts, deals pipeline, activity timeline
   newsletter: true, // Double opt-in subscribers
   analytics: true, // Cookie-free page view analytics
+  assistant: true, // AI chat from packages/assistant
+  helpdesk: false, // Tickets, SLAs, canned replies
+  kb: false, // Help centre articles
+  forms: false, // Custom forms with a submissions inbox
+  campaigns: false, // Send email campaigns to newsletter subscribers
+  projects: false, // Client projects, boards, portal sharing
+  team: false, // Staff directory, leave, timesheets
+  expenses: false, // Expenses with private receipts
+  i18n: false, // Translations and per-locale URLs
+  reports: false, // Cross-module reports
 } as const

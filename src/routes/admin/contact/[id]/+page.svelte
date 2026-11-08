@@ -25,7 +25,7 @@
         <a
           class="btn btn-primary btn-sm"
           href="mailto:{r.email}?subject={encodeURIComponent(
-            'Re: your message',
+            `Re: ${r.topic || 'your message'}`,
           )}">Reply by email</a
         >
       </div>
@@ -38,9 +38,15 @@
           <dt class="opacity-60">Email</dt>
           <dd class="break-all">{r.email}</dd>
           <dt class="opacity-60">Phone</dt>
-          <dd>{r.phone || "—"}</dd>
+          <dd>{r.phone || " - "}</dd>
           <dt class="opacity-60">Company</dt>
-          <dd>{r.company_name || "—"}</dd>
+          <dd>{r.company_name || " - "}</dd>
+          <dt class="opacity-60">Topic</dt>
+          <dd>{r.topic || " - "}</dd>
+          <dt class="opacity-60">Prefers</dt>
+          <dd>{r.preferred_contact || " - "}</dd>
+          <dt class="opacity-60">Came from</dt>
+          <dd class="break-all">{r.source_path || " - "}</dd>
         </dl>
       </div>
     </section>

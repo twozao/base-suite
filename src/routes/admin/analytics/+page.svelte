@@ -31,7 +31,7 @@
     {#if data.trend !== null}<div
         class="stat-desc {data.trend >= 0 ? 'text-success' : 'text-error'}"
       >
-        {data.trend >= 0 ? "▲" : "▼"}
+        {data.trend >= 0 ? "up" : "down"}
         {Math.abs(data.trend)}% vs previous half
       </div>{/if}
   </div>

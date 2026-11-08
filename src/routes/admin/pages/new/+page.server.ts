@@ -25,7 +25,7 @@ export const actions: Actions = {
     const id = crypto.randomUUID()
     const now = nowIso()
     try {
-      // The page and its first revision land together or not at all.
+      // The page and its first revision land together or not at all (on D1, one after the other).
       await event.locals.db.transaction().execute(async (trx) => {
         await trx
           .insertInto("cms_pages")

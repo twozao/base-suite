@@ -1,5 +1,6 @@
 <script lang="ts">
   import "../app.css"
+  import { beforeNavigate } from "$app/navigation"
   import { navigating } from "$app/stores"
   import { expoOut } from "svelte/easing"
   import { slide } from "svelte/transition"
@@ -10,6 +11,13 @@
   let { children }: Props = $props()
   import { page } from "$app/stores"
   const site = $derived($page.data.site)
+  // A failed client request can lose the root layout data, and later pages would crash without it.
+  // This layout is always mounted, so it leaves that state with a full page load from the server.
+  beforeNavigate(({ cancel, to, willUnload }) => {
+    if (site || !to || willUnload) return
+    cancel()
+    location.assign(to.url)
+  })
   // Built as a string so the CSS preprocessor doesn't try to parse it
   const STYLE_OPEN = "<" + "style>"
   const STYLE_CLOSE = "</" + "style>"

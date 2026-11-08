@@ -3,22 +3,27 @@ import { requireModule, requirePermission } from "$lib/server/auth/staff"
 import { nowIso } from "$lib/server/db/json"
 import { containsText } from "$lib/server/db/query"
 import { pageParams, searchParam } from "$lib/server/pagination"
+import { getSettings } from "$lib/server/settings"
 import type { PageServerLoad } from "./$types"
+
+const VIEWS = ["upcoming", "past", "canceled"] as const
 
 export const load: PageServerLoad = async (event) => {
   requireModule("booking")
-  await requirePermission(event, "bookings.view")
-  const view =
-    event.url.searchParams.get("view") === "past" ? "past" : "upcoming"
+  const staff = await requirePermission(event, "bookings.view")
+  const asked = event.url.searchParams.get("view")
+  const view = VIEWS.find((v) => v === asked) ?? "upcoming"
   const q = searchParam(event.url)
   const { page, size, from } = pageParams(event.url)
   const now = nowIso()
   const db = event.locals.db
 
-  let base =
-    view === "upcoming"
-      ? db.selectFrom("bookings").where("start_time", ">=", now)
-      : db.selectFrom("bookings").where("start_time", "<", now)
+  let base = db.selectFrom("bookings")
+  if (view === "upcoming")
+    base = base.where("start_time", ">=", now).where("status", "=", "scheduled")
+  else if (view === "past")
+    base = base.where("start_time", "<", now).where("status", "!=", "canceled")
+  else base = base.where("status", "=", "canceled")
   if (q) {
     base = base.where((eb) =>
       eb.or([
@@ -28,11 +33,12 @@ export const load: PageServerLoad = async (event) => {
       ]),
     )
   }
-  const [{ n }, rows] = await Promise.all([
+  const [{ n }, rows, settings] = await Promise.all([
     base.select(db.fn.countAll<number>().as("n")).executeTakeFirstOrThrow(),
     base
       .select([
         "id",
+        "provider",
         "event_name",
         "invitee_name",
         "invitee_email",
@@ -46,6 +52,7 @@ export const load: PageServerLoad = async (event) => {
       .limit(size)
       .offset(from)
       .execute(),
+    getSettings(db),
   ])
   return {
     rows,
@@ -54,6 +61,9 @@ export const load: PageServerLoad = async (event) => {
     size,
     q,
     view,
-    webhookConfigured: !!env.PRIVATE_CALENDLY_WEBHOOK_SIGNING_KEY,
+    canConfigure: staff.permissions.has("settings.manage"),
+    calendlyNeedsWebhook:
+      settings.booking.eventTypes.length > 0 &&
+      !env.PRIVATE_CALENDLY_WEBHOOK_SIGNING_KEY,
   }
 }

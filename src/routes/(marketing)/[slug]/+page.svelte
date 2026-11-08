@@ -15,6 +15,11 @@
       <h1 class="text-4xl sm:text-5xl font-bold tracking-tight">
         {data.page.title}
       </h1>
+      {#if data.page.excerpt}
+        <p class="mt-5 text-lg text-base-content/70 leading-relaxed">
+          {data.page.excerpt}
+        </p>
+      {/if}
     </div>
   </header>
   <div

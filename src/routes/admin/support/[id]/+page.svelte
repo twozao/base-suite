@@ -56,7 +56,7 @@
               ? "Support"
               : m.sender === "system"
                 ? "System"
-                : "Visitor"} · {formatDateTime(m.created_at)}
+                : "Visitor"} - {formatDateTime(m.created_at)}
           </div>
           <div
             class="chat-bubble whitespace-pre-wrap break-words {m.sender ===
@@ -84,7 +84,7 @@
       <textarea
         name="body"
         class="textarea grow h-16"
-        placeholder="Write a reply… (Enter to send, Shift+Enter for a new line)"
+        placeholder="Write a reply... (Enter to send, Shift+Enter for a new line)"
         maxlength="4000"
         required
         onkeydown={(e) => {
@@ -103,9 +103,9 @@
       <div class="card-body text-sm">
         <dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2">
           <dt class="opacity-60">Email</dt>
-          <dd class="break-all">{c.visitor_email ?? "—"}</dd>
+          <dd class="break-all">{c.visitor_email ?? " - "}</dd>
           <dt class="opacity-60">Page</dt>
-          <dd class="break-all">{c.page_url ?? "—"}</dd>
+          <dd class="break-all">{c.page_url ?? " - "}</dd>
           <dt class="opacity-60">Account</dt>
           <dd>
             {#if c.user_id}<a class="link" href="/admin/users/{c.user_id}"

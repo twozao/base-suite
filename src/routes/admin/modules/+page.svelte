@@ -61,7 +61,7 @@
               </div>
               <p class="text-sm text-base-content/70">{m.summary}</p>
               <ul class="text-xs text-base-content/60 space-y-1">
-                {#each m.provides as p}<li>• {p}</li>{/each}
+                {#each m.provides as p}<li>- {p}</li>{/each}
               </ul>
               <div class="flex flex-wrap gap-1 mt-auto">
                 {#if m.active}<span class="badge badge-success badge-sm"
@@ -106,6 +106,6 @@
 {/each}
 
 <p class="text-sm text-base-content/60">
-  Want to build a planned module? See <code>docs/ARCHITECTURE.md</code> → “Building
-  a module”.
+  Want to build a planned module? See <code>docs/ARCHITECTURE.md</code> -> "Building
+  a module".
 </p>

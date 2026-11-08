@@ -1,7 +1,8 @@
 import { env } from "$env/dynamic/private"
 import { error, redirect, type Handle, type ServerInit } from "@sveltejs/kit"
 import { sequence } from "@sveltejs/kit/hooks"
-import { connect, type Db } from "$lib/server/db"
+import { connect, connectD1, type Db } from "$lib/server/db"
+import { setBindings } from "$lib/server/platform"
 import {
   SESSION_COOKIE,
   clearSessionCookie,
@@ -11,15 +12,35 @@ import {
 import { getStaff } from "$lib/server/auth/staff"
 import { getSettings } from "$lib/server/settings"
 import { setModuleSwitches } from "$lib/modules"
+import { sendDueReminders } from "$lib/server/booking/notify"
+
+const REMINDER_POLL_MS = 5 * 60_000
 
 let db: Db
 
-// One database handle per process, migrated to the latest schema before the first request.
+// One database handle per process, migrated to the latest schema before the first request. On
+// Cloudflare the D1 binding arrives with each request instead, and a Cron Trigger sends reminders.
 export const init: ServerInit = async () => {
+  if (__CLOUDFLARE__) return
   db = (await connect(env.DATABASE_URL ?? "")).db
+  // Hosts that freeze idle processes send reminders late; each one is still only sent once.
+  const remind = () =>
+    sendDueReminders(db).catch((e) =>
+      console.error("reminders failed", e instanceof Error ? e.message : e),
+    )
+  setInterval(remind, REMINDER_POLL_MS).unref?.()
+  void remind()
 }
 
 const database: Handle = async ({ event, resolve }) => {
+  if (__CLOUDFLARE__) {
+    const bindings = event.platform?.env
+    if (!bindings?.DB)
+      error(500, "The DB binding is missing from wrangler.toml")
+    setBindings(bindings)
+    event.locals.db = await connectD1(bindings.DB)
+    return resolve(event)
+  }
   event.locals.db = db
   return resolve(event)
 }
@@ -42,6 +63,14 @@ const authGuard: Handle = async ({ event, resolve }) => {
   }
   event.locals.user = found.user
   event.locals.session = found.session
+  // With sign-in closed, customers are treated as signed out; their sessions return if it reopens.
+  const { signin } = await getSettings(event.locals.db)
+  if (!signin.enabled && !(await getStaff(event))) {
+    event.locals.user = null
+    event.locals.session = null
+    event.locals.staff = null
+    return resolve(event)
+  }
   if (found.renewed && token) {
     setSessionCookie(
       event.cookies,
@@ -63,7 +92,7 @@ const securityHeaders: Handle = async ({ event, resolve }) => {
   h.set("referrer-policy", "strict-origin-when-cross-origin")
   h.set(
     "permissions-policy",
-    "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+    "camera=(), microphone=(), geolocation=(self), payment=(), usb=()",
   )
   h.set("cross-origin-opener-policy", "same-origin")
   if (event.url.protocol === "https:") {
