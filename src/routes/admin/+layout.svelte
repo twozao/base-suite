@@ -19,9 +19,10 @@
   )
   const groups = $derived.by(() => {
     const out: { name: string; items: typeof data.nav }[] = []
+    // One section per group, in the order groups first appear, wherever their items are listed.
     for (const item of data.nav) {
-      const last = out[out.length - 1]
-      if (last?.name === item.group) last.items.push(item)
+      const g = out.find((x) => x.name === item.group)
+      if (g) g.items.push(item)
       else out.push({ name: item.group, items: [item] })
     }
     return out

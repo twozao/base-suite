@@ -72,6 +72,5 @@ export const GET: RequestHandler = async (event) => {
   const { userId } = result
   if (!(await maySignIn(db, policy, userId))) signInError("closed")
   await recordSignIn(db, userId)
-  await startSession(event, userId)
-  redirect(303, flow.next)
+  redirect(303, await startSession(event, userId, flow.next))
 }

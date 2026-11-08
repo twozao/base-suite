@@ -5,6 +5,7 @@
   import PostFields from "$lib/components/admin/PostFields.svelte"
   import Flash from "$lib/components/admin/Flash.svelte"
   import { formatDateTime } from "$lib/format"
+  import { parseBlocks } from "$lib/blocks"
   let { data, form } = $props()
   const p = $derived(data.post)
   const values = $derived(
@@ -13,10 +14,12 @@
       : {
           title: p.title,
           slug: p.slug,
-          body_md: p.body_md,
           excerpt: p.excerpt ?? "",
           seo_title: p.seo_title ?? "",
           seo_description: p.seo_description ?? "",
+          og_image_url: p.og_image_url ?? "",
+          seo_noindex: p.seo_noindex,
+          review_note: p.review_note ?? "",
           cover_image_url: p.cover_image_url ?? "",
           author_name: p.author_name ?? "",
           tags: p.tags.join(", "),
@@ -55,16 +58,21 @@
   <PageEditor
     action="?/save"
     prefix="/blog/"
+    kind="post"
     {values}
+    blocks={form && "values" in form && form.values
+      ? parseBlocks(form.values.blocks)
+      : data.blocks}
     {errors}
-    canPublish={data.canPublish}
+    canPublish={data.access.canPublish}
     status={p.status}
+    reviewRequested={p.review_requested_at}
   >
     {#snippet extra()}<PostFields {values} {errors} />{/snippet}
   </PageEditor>
 {/key}
 
-{#if data.canPublish}
+{#if data.access.canDelete}
   <section class="card bg-base-100 border border-error/30 mt-8 max-w-xl">
     <div class="card-body gap-3">
       <h2 class="card-title text-base">Delete post</h2>

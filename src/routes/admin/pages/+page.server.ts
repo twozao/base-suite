@@ -6,7 +6,7 @@ import type { PageServerLoad } from "./$types"
 
 export const load: PageServerLoad = async (event) => {
   requireModule("cms")
-  await requirePermission(event, "cms.edit")
+  await requirePermission(event, "cms.write")
   const q = searchParam(event.url)
   const status = event.url.searchParams.get("status") ?? ""
   const { page, size, from } = pageParams(event.url)

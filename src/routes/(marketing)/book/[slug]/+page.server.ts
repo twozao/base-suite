@@ -1,4 +1,5 @@
 import { error, fail, redirect } from "@sveltejs/kit"
+import { emit } from "$lib/server/plugins/events"
 import { z } from "zod"
 import { isValidTimeZone } from "$lib/booking/time"
 import { requireModule } from "$lib/server/auth/staff"
@@ -129,6 +130,12 @@ export const actions: Actions = {
             values,
           })
     }
+    await emit(db, "booking.created", {
+      id: result.id,
+      event: type.name,
+      start: result.start,
+      end: result.end,
+    })
 
     await captureLead(db, {
       email: parsed.data.email,

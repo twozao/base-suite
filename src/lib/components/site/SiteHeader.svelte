@@ -2,9 +2,11 @@
   import { page } from "$app/stores"
   import Icon from "./Icon.svelte"
   import type { PublicSite } from "$lib/site"
+  import { localizeHref, splitLocale } from "$lib/i18n"
 
   let { site, signedIn }: { site: PublicSite; signedIn: boolean } = $props()
   let open = $state(false)
+  const basePath = $derived(splitLocale($page.url.pathname).path)
 
   const isCurrent = (href: string, path: string) =>
     href !== "/" &&
@@ -54,6 +56,28 @@
     </ul>
 
     <div class="ml-auto hidden md:flex items-center gap-2">
+      {#if site.locales.length > 1}
+        <details class="dropdown dropdown-end">
+          <summary class="btn btn-ghost btn-sm" aria-label="Language"
+            >{site.locale.toUpperCase()}</summary
+          >
+          <ul
+            class="dropdown-content menu z-40 mt-2 w-44 rounded-box border border-base-300 bg-base-100 p-2 shadow"
+          >
+            {#each site.locales as l (l.code)}
+              <li>
+                <a
+                  href={localizeHref(basePath, l.code, site.defaultLocale)}
+                  hreflang={l.code}
+                  lang={l.code}
+                  aria-current={l.code === site.locale ? "true" : undefined}
+                  >{l.name}</a
+                >
+              </li>
+            {/each}
+          </ul>
+        </details>
+      {/if}
       <a
         href="/search"
         class="btn btn-ghost btn-sm btn-square"
@@ -106,6 +130,20 @@
             onclick={() => (open = false)}>Search</a
           >
         </li>
+        {#if site.locales.length > 1}
+          <li class="flex flex-wrap gap-1 px-3 py-2">
+            {#each site.locales as l (l.code)}
+              <a
+                class="btn btn-xs {l.code === site.locale
+                  ? 'btn-primary'
+                  : 'btn-ghost'}"
+                href={localizeHref(basePath, l.code, site.defaultLocale)}
+                hreflang={l.code}
+                lang={l.code}>{l.name}</a
+              >
+            {/each}
+          </li>
+        {/if}
         <li class="pt-2 flex gap-2">
           {#if signedIn || site.signIn}
             <a

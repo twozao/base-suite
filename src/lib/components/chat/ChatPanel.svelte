@@ -17,11 +17,15 @@
     messages?: Message[]
   }
 
-  let { onclose }: { onclose: () => void } = $props()
+  let {
+    onclose,
+    initialDraft = "",
+  }: { onclose: () => void; initialDraft?: string } = $props()
 
   let chat: ChatState | null = $state(null)
   let messages: Message[] = $state([])
-  let draft = $state("")
+  // svelte-ignore state_referenced_locally
+  let draft = $state(initialDraft)
   let name = $state("")
   let email = $state("")
   let sending = $state(false)

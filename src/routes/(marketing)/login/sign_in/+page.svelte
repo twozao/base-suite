@@ -3,12 +3,41 @@
   import { page } from "$app/stores"
   import OAuthButtons from "$lib/components/site/OAuthButtons.svelte"
   import { OAUTH_ERRORS } from "$lib/signin_providers"
+  import { startAuthentication } from "@simplewebauthn/browser"
 
   let { data, form } = $props()
   const oauthError = $derived(
     OAUTH_ERRORS[$page.url.searchParams.get("oauth_error") ?? ""],
   )
   let loading = $state(false)
+  let passkeyError = $state("")
+
+  async function passkey() {
+    passkeyError = ""
+    try {
+      const options = await (
+        await fetch("/login/passkey", { method: "POST" })
+      ).json()
+      const response = await startAuthentication({ optionsJSON: options })
+      const res = await fetch("/login/passkey", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          response,
+          next: $page.url.searchParams.get("next"),
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok)
+        throw new Error(data.message || "That passkey could not be used")
+      location.href = data.next
+    } catch (e) {
+      passkeyError =
+        e instanceof Error && e.name !== "NotAllowedError"
+          ? e.message
+          : "Passkey sign-in was cancelled"
+    }
+  }
 </script>
 
 <svelte:head>
@@ -82,6 +111,17 @@
     </button>
   </form>
 {/if}
+<button type="button" class="btn btn-outline w-full mt-4" onclick={passkey}
+  >Sign in with a passkey</button
+>
+{#if passkeyError}<p class="text-error text-sm mt-2" role="alert">
+    {passkeyError}
+  </p>{/if}
+{#if $page.url.searchParams.get("mfa") === "expired"}<p
+    class="text-warning text-sm mt-2"
+  >
+    The sign-in took too long. Please start again.
+  </p>{/if}
 {#if data.signin.password}
   <div class="text-base-content/80 mt-4">
     <a class="underline" href="/login/forgot_password">Forgot password?</a>

@@ -4,7 +4,9 @@ import { defineConfig } from "vitest/config"
 export default defineConfig({
   plugins: [sveltekit()],
   define: {
-    __CLOUDFLARE__: JSON.stringify(process.env.BUILD_TARGET === "cloudflare"),
+    __CLOUDFLARE__: JSON.stringify(
+      process.env.BUILD_TARGET?.startsWith("cloudflare") ?? false,
+    ),
   },
   test: {
     include: ["src/**/*.{test,spec}.{js,ts}", "packages/**/*.test.ts"],

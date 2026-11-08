@@ -1,4 +1,5 @@
 import { fail } from "@sveltejs/kit"
+import { emit } from "$lib/server/plugins/events"
 import { z } from "zod"
 import { sendAdminEmail, sendTemplatedEmail } from "$lib/mailer"
 import { fromEmail, mailConfigured } from "$lib/server/auth/flows"
@@ -159,6 +160,12 @@ export const actions: Actions = {
       })
     }
     if (spam) return { success: true, reference: reference.slice(0, 8) }
+    await emit(db, "contact.created", {
+      id: reference,
+      topic: d.topic || null,
+      email: d.email.toLowerCase(),
+      name: d.name,
+    })
 
     await captureLead(db, {
       email: d.email,

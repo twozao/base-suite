@@ -3,9 +3,10 @@ import type { ColumnType, Generated, Insertable, Selectable } from "kysely"
 // One schema for every dialect. Timestamps are ISO-8601 strings, booleans are 0/1 integers and JSON
 // is stored as text, so a row reads the same from SQLite and Postgres. Ids are app-generated UUIDs.
 export type Timestamp = ColumnType<string, string | undefined, string>
-export type AppRole = "admin" | "editor" | "support"
+export type AppRole = "admin" | "editor" | "author" | "contributor" | "support"
 export type ContactStatus = "new" | "open" | "closed" | "spam"
 export type CmsStatus = "draft" | "published" | "archived"
+export type PageTemplate = "default" | "wide" | "landing"
 export type ChatStatus = "open" | "pending" | "closed"
 export type ChatSender = "visitor" | "staff" | "system"
 export type BookingStatus = "scheduled" | "canceled" | "no_show"
@@ -40,6 +41,9 @@ export interface SessionsTable {
   user_id: string
   expires_at: string
   created_at: Timestamp
+  user_agent: string | null
+  last_seen_at: string | null
+  mfa: Generated<number>
 }
 export interface AuthTokensTable {
   token_hash: string
@@ -115,12 +119,19 @@ export interface CmsPagesTable {
   updated_by: string | null
   created_at: Timestamp
   updated_at: Timestamp
+  blocks_json: string | null
+  seo_noindex: Generated<number>
+  og_image_url: string | null
+  review_requested_at: string | null
+  review_note: string | null
+  template: Generated<PageTemplate>
 }
 export interface CmsPageRevisionsTable {
   id: Generated<number>
   page_id: string
   title: string
   body_md: string
+  blocks_json: string | null
   saved_by: string | null
   created_at: Timestamp
 }
@@ -142,6 +153,11 @@ export interface PostsTable {
   updated_by: string | null
   created_at: Timestamp
   updated_at: Timestamp
+  blocks_json: string | null
+  seo_noindex: Generated<number>
+  og_image_url: string | null
+  review_requested_at: string | null
+  review_note: string | null
 }
 export interface ChatConversationsTable {
   id: string
@@ -511,6 +527,190 @@ export interface SiteTranslationsTable {
   value: Generated<string>
 }
 
+export interface CmsBlocksTable {
+  id: string
+  name: string
+  blocks_json: Generated<string>
+  extension_id: string | null
+  created_at: Timestamp
+  updated_at: Timestamp
+}
+export interface ContentTypesTable {
+  id: string
+  slug: string
+  name: string
+  singular: string
+  url_prefix: string
+  description: string | null
+  fields_json: Generated<string>
+  has_archive: Generated<number>
+  in_search: Generated<number>
+  extension_id: string | null
+  created_at: Timestamp
+  updated_at: Timestamp
+}
+export interface ContentEntriesTable {
+  id: string
+  type_id: string
+  slug: string
+  title: string
+  status: Generated<CmsStatus>
+  fields_json: Generated<string>
+  blocks_json: string | null
+  body_md: Generated<string>
+  body_html: Generated<string>
+  excerpt: string | null
+  seo_title: string | null
+  seo_description: string | null
+  seo_noindex: Generated<number>
+  og_image_url: string | null
+  sort_order: Generated<number>
+  review_requested_at: string | null
+  review_note: string | null
+  published_at: string | null
+  created_by: string | null
+  updated_by: string | null
+  created_at: Timestamp
+  updated_at: Timestamp
+}
+export interface MediaTable {
+  name: string
+  alt: string | null
+  width: number | null
+  height: number | null
+  focal_x: Generated<number>
+  focal_y: Generated<number>
+  variants: Generated<string>
+  size: Generated<number>
+  source_url: string | null
+  created_at: Timestamp
+}
+export interface RedirectsTable {
+  id: Generated<number>
+  from_path: string
+  to_url: string
+  status_code: Generated<number>
+  hits: Generated<number>
+  extension_id: string | null
+  created_at: Timestamp
+}
+export interface NotFoundLogTable {
+  path: string
+  hits: Generated<number>
+  referrer: string | null
+  last_seen: Timestamp
+}
+export interface UserTotpTable {
+  user_id: string
+  secret: string
+  enabled_at: string | null
+  last_step: Generated<number>
+  created_at: Timestamp
+}
+export interface UserRecoveryCodesTable {
+  id: Generated<number>
+  user_id: string
+  code_hash: string
+  used_at: string | null
+}
+export interface MfaChallengesTable {
+  token_hash: string
+  user_id: string
+  next_path: string | null
+  attempts: Generated<number>
+  expires_at: string
+}
+export interface UserPasskeysTable {
+  id: string
+  user_id: string
+  public_key: string
+  counter: Generated<number>
+  transports: Generated<string>
+  name: string
+  created_at: Timestamp
+  last_used_at: string | null
+}
+export interface PasskeyChallengesTable {
+  token_hash: string
+  challenge: string
+  user_id: string | null
+  purpose: "register" | "signin"
+  expires_at: string
+}
+export interface WpImportsTable {
+  id: Generated<number>
+  origin: string
+  filename: string | null
+  counts_json: Generated<string>
+  created_by: string | null
+  created_at: Timestamp
+}
+export interface ApiTokensTable {
+  id: string
+  name: string
+  token_hash: string
+  scopes: Generated<string>
+  app_id: string | null
+  created_by: string | null
+  last_used_at: string | null
+  revoked_at: string | null
+  created_at: Timestamp
+}
+export interface WebhooksTable {
+  id: string
+  url: string
+  secret: string
+  events: Generated<string>
+  active: Generated<number>
+  app_id: string | null
+  created_at: Timestamp
+}
+export interface WebhookDeliveriesTable {
+  id: Generated<number>
+  webhook_id: string
+  event: string
+  payload: string
+  status: Generated<"pending" | "delivered" | "failed">
+  attempts: Generated<number>
+  response_code: number | null
+  error: string | null
+  next_attempt_at: Timestamp
+  created_at: Timestamp
+}
+export interface ExtensionsTable {
+  id: string
+  name: string
+  version: string
+  manifest_json: string
+  enabled: Generated<number>
+  installed_by: string | null
+  installed_at: Timestamp
+}
+export interface AppsTable {
+  id: string
+  name: string
+  base_url: string
+  admin_path: string | null
+  secret: string
+  scopes: Generated<string>
+  blocks: Generated<string>
+  enabled: Generated<number>
+  created_by: string | null
+  created_at: Timestamp
+}
+export interface CommentsTable {
+  id: Generated<number>
+  post_id: string
+  parent_id: number | null
+  author_name: string
+  author_email: string | null
+  user_id: string | null
+  body: string
+  status: Generated<"pending" | "approved" | "spam">
+  ip_hash: string | null
+  created_at: Timestamp
+}
+
 export interface Database {
   users: UsersTable
   helpdesk_tickets: HelpdeskTicketsTable
@@ -557,6 +757,24 @@ export interface Database {
   newsletter_subscribers: NewsletterSubscribersTable
   analytics_daily: AnalyticsDailyTable
   analytics_referrers: AnalyticsReferrersTable
+  cms_blocks: CmsBlocksTable
+  content_types: ContentTypesTable
+  content_entries: ContentEntriesTable
+  media: MediaTable
+  redirects: RedirectsTable
+  not_found_log: NotFoundLogTable
+  user_totp: UserTotpTable
+  user_recovery_codes: UserRecoveryCodesTable
+  mfa_challenges: MfaChallengesTable
+  user_passkeys: UserPasskeysTable
+  passkey_challenges: PasskeyChallengesTable
+  wp_imports: WpImportsTable
+  api_tokens: ApiTokensTable
+  webhooks: WebhooksTable
+  webhook_deliveries: WebhookDeliveriesTable
+  extensions: ExtensionsTable
+  apps: AppsTable
+  comments: CommentsTable
 }
 
 export type UserRow = Selectable<UsersTable>
@@ -585,4 +803,10 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export const ROLES: readonly AppRole[] = ["admin", "editor", "support"]
+export const ROLES: readonly AppRole[] = [
+  "admin",
+  "editor",
+  "author",
+  "contributor",
+  "support",
+]

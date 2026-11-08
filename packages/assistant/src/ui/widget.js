@@ -4,6 +4,8 @@
   const script = document.currentScript
   const base = (script && script.dataset.base) || "/assistant"
   const offset = (script && script.dataset.offset) || "20px"
+  // Set by a host page that has its own live chat: shows a button that fires "assistant:handoff" instead of a link.
+  const handoffEvent = script && script.dataset.handoff
   // An embed on another site needs the cookie sent across origins; on the same site this changes nothing.
   const credentials =
     new URL(base, location.href).origin === location.origin
@@ -25,7 +27,7 @@
   .u { align-self: flex-end; background: var(--color-primary, #4f46e5); color: var(--color-primary-content, #fff); }
   .a { align-self: flex-start; background: var(--color-base-200, #f1f5f9); }
   .meta { margin-top: 6px; font-size: 12px; opacity: .85; }
-  .meta a { color: inherit; }
+  .meta a, .a > a { color: inherit; text-decoration: underline; }
   .rate { margin-top: 6px; display: flex; gap: 8px; font-size: 12px; }
   .rate button { background: none; border: 1px solid var(--color-base-300, #cbd5e1); border-radius: 6px; color: inherit; cursor: pointer; padding: 1px 8px; font-size: 12px; }
   form.say { display: flex; gap: 8px; padding: 10px; border-top: 1px solid var(--color-base-300, #e2e8f0); }
@@ -44,6 +46,7 @@
   .share { background: none; border: 1px solid var(--color-base-300, #cbd5e1); border-radius: 6px; color: inherit; cursor: pointer; padding: 3px 8px; font-size: 12px; align-self: flex-start; }
   .foot { padding: 0 12px 8px; font-size: 11px; opacity: .7; text-align: center; }
   .foot a { color: inherit; }
+  .human { margin: 0 auto; font-size: 12px; opacity: 1; }
   .dots::after { content: "..."; animation: blink 1.2s infinite; }
   @keyframes blink { 50% { opacity: .3; } }
   @media (prefers-reduced-motion: reduce) { .dots::after { animation: none; } }`
@@ -79,14 +82,17 @@
 
   const start = async () => {
     let config
+    // Lets a host page with its own live chat show that chat's button when the assistant stays hidden.
+    const unavailable = () =>
+      window.dispatchEvent(new CustomEvent("assistant:unavailable"))
     try {
       const res = await fetch(`${base}/config`, { credentials })
-      if (!res.ok) return
+      if (!res.ok) return unavailable()
       config = await res.json()
     } catch {
-      return
+      return unavailable()
     }
-    if (!config.available) return
+    if (!config.available) return unavailable()
 
     const host = el("div", { id: "assistant-widget" })
     const root = host.attachShadow({ mode: "open" })
@@ -137,8 +143,26 @@
       )
       bubble.append(row)
     }
+    // Answers quote site text, so [label](url) becomes a link (same-site paths and https only) and ** is dropped.
+    const rich = (text) => {
+      const out = document.createDocumentFragment()
+      const re = /\[([^\]\n]{1,200})\]\(([^)\s]{1,500})\)/g
+      let at = 0
+      for (const m of text.matchAll(re)) {
+        out.append(text.slice(at, m.index).replace(/\*\*/g, ""))
+        const safe = /^\/(?![/\\])/.test(m[2]) || /^https:\/\//i.test(m[2])
+        out.append(safe ? el("a", { href: m[2] }, m[1]) : m[1])
+        at = m.index + m[0].length
+      }
+      out.append(text.slice(at).replace(/\*\*/g, ""))
+      return out
+    }
     const bubble = (role, text, extra = {}) => {
-      const b = el("div", { class: `m ${role === "user" ? "u" : "a"}` }, text)
+      const b = el(
+        "div",
+        { class: `m ${role === "user" ? "u" : "a"}` },
+        role === "user" ? text : rich(text),
+      )
       if (extra.sources && extra.sources.length) {
         const meta = el("div", { class: "meta" }, "Source: ")
         extra.sources.forEach((s, i) => {
@@ -257,13 +281,37 @@
         { class: "panel", role: "dialog", "aria-label": config.name },
         head,
       )
-      const foot = config.handoff
+      const lastQuestion = () =>
+        [...past].reverse().find((m) => m.role === "user")?.content || ""
+      const foot = handoffEvent
         ? el(
             "div",
             { class: "foot" },
-            el("a", { href: config.handoff.url }, config.handoff.label),
+            el(
+              "button",
+              {
+                class: "share human",
+                type: "button",
+                onclick: () => {
+                  const question = lastQuestion()
+                  toggle()
+                  window.dispatchEvent(
+                    new CustomEvent("assistant:handoff", {
+                      detail: { question },
+                    }),
+                  )
+                },
+              },
+              handoffEvent,
+            ),
           )
-        : null
+        : config.handoff
+          ? el(
+              "div",
+              { class: "foot" },
+              el("a", { href: config.handoff.url }, config.handoff.label),
+            )
+          : null
       const showChat = async () => {
         panel.replaceChildren(head, log, form, ...(foot ? [foot] : []))
         try {

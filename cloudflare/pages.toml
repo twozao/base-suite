@@ -1,0 +1,6 @@
+# Read only by the SvelteKit adapter when BUILD_TARGET=cloudflare-pages: where it writes the Pages build.
+# Deploys use the per-demo config that ./setup.sh demo:pages writes under .wrangler/.
+name = "base-suite-pages-build"
+pages_build_output_dir = "../.svelte-kit/cloudflare-pages"
+compatibility_date = "2026-10-01"
+compatibility_flags = ["nodejs_compat"]

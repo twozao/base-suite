@@ -3,13 +3,32 @@ import { themeCss, THEMES } from "$lib/server/theme"
 import { isModuleEnabled } from "$lib/modules"
 import type { PublicSite } from "$lib/site"
 import type { LayoutServerLoad } from "./$types"
+import { error } from "@sveltejs/kit"
+import {
+  localeFor,
+  navLabels,
+  translateNavigation,
+} from "$lib/server/translations"
 
 // Brand, navigation and theme for every page. Settings are cached per instance (see getSettings).
-export const load: LayoutServerLoad = async ({ locals }) => {
+export const load: LayoutServerLoad = async ({ locals, url }) => {
   const s = await getSettings(locals.db)
+  const lang = await localeFor(locals.db, url)
+  if (!lang) error(404, "Not found")
+  const translated = lang.locale !== lang.defaultLocale
   const site: PublicSite = {
     brand: s.brand,
-    navigation: s.navigation,
+    navigation: translated
+      ? translateNavigation(
+          s.navigation,
+          await navLabels(locals.db, lang.locale),
+          lang.locale,
+          lang.defaultLocale,
+        )
+      : s.navigation,
+    locale: lang.locale,
+    defaultLocale: lang.defaultLocale,
+    locales: lang.locales,
     announcement: s.general.announcement,
     signIn: s.signin.enabled,
     themeCss: themeCss(

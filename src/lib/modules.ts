@@ -395,7 +395,7 @@ const ICONS = {
     "M10.3 4.3c.4-1.7 3-1.7 3.4 0a1.7 1.7 0 002.6 1.1c1.5-.9 3.3.8 2.4 2.4a1.7 1.7 0 001 2.5c1.8.4 1.8 3 0 3.4a1.7 1.7 0 00-1 2.6c.9 1.5-.9 3.3-2.4 2.4a1.7 1.7 0 00-2.6 1c-.4 1.8-3 1.8-3.4 0a1.7 1.7 0 00-2.6-1c-1.5.9-3.3-.9-2.4-2.4a1.7 1.7 0 00-1-2.6c-1.8-.4-1.8-3 0-3.4a1.7 1.7 0 001-2.6c-.9-1.5.9-3.3 2.4-2.4 1 .6 2.3.1 2.6-1zM15 12a3 3 0 11-6 0 3 3 0 016 0z",
 }
 
-const ALL_ADMIN_NAV: AdminNavItem[] = [
+export const ALL_ADMIN_NAV: AdminNavItem[] = [
   {
     group: "Overview",
     href: "/admin",
@@ -423,7 +423,7 @@ const ALL_ADMIN_NAV: AdminNavItem[] = [
     group: "Content",
     href: "/admin/pages",
     label: "Pages",
-    permission: "cms.edit",
+    permission: "cms.write",
     icon: ICONS.pages,
     module: "cms",
   },
@@ -431,7 +431,7 @@ const ALL_ADMIN_NAV: AdminNavItem[] = [
     group: "Content",
     href: "/admin/blog",
     label: "Blog",
-    permission: "cms.edit",
+    permission: "cms.write",
     icon: ICONS.blog,
     module: "cms",
   },
@@ -439,7 +439,7 @@ const ALL_ADMIN_NAV: AdminNavItem[] = [
     group: "Content",
     href: "/admin/media",
     label: "Media",
-    permission: "cms.edit",
+    permission: "cms.write",
     icon: ICONS.image,
   },
 
@@ -509,6 +509,54 @@ const ALL_ADMIN_NAV: AdminNavItem[] = [
   },
 
   {
+    group: "Content",
+    href: "/admin/content",
+    label: "Content",
+    permission: "cms.write",
+    icon: ICONS.board,
+    module: "cms",
+  },
+  {
+    group: "Content",
+    href: "/admin/blocks",
+    label: "Reusable blocks",
+    permission: "cms.write",
+    icon: ICONS.puzzle,
+    module: "cms",
+  },
+  {
+    group: "Content",
+    href: "/admin/review",
+    label: "Review queue",
+    permission: "cms.publish",
+    icon: ICONS.inbox,
+    module: "cms",
+  },
+  {
+    group: "Content",
+    href: "/admin/comments",
+    label: "Comments",
+    permission: "comments.moderate",
+    icon: ICONS.chat,
+    module: "cms",
+  },
+  {
+    group: "Content",
+    href: "/admin/redirects",
+    label: "Redirects",
+    permission: "cms.publish",
+    icon: ICONS.funnel,
+  },
+  {
+    group: "Content",
+    href: "/admin/import",
+    label: "Import",
+    permission: "settings.manage",
+    icon: ICONS.send,
+    module: "cms",
+  },
+
+  {
     group: "Configuration",
     href: "/admin/modules",
     label: "Modules",
@@ -543,6 +591,56 @@ const ALL_ADMIN_NAV: AdminNavItem[] = [
     label: "Settings",
     permission: "settings.manage",
     icon: ICONS.settings,
+  },
+  {
+    group: "Configuration",
+    href: "/admin/content-types",
+    label: "Content types",
+    permission: "settings.manage",
+    icon: ICONS.pages,
+    module: "cms",
+  },
+  {
+    group: "Configuration",
+    href: "/admin/extensions",
+    label: "Extensions",
+    permission: "plugins.manage",
+    icon: ICONS.puzzle,
+  },
+  {
+    group: "Configuration",
+    href: "/admin/apps",
+    label: "Apps",
+    permission: "plugins.manage",
+    icon: ICONS.spark,
+  },
+  {
+    group: "Configuration",
+    href: "/admin/developers",
+    label: "API & webhooks",
+    permission: "plugins.manage",
+    icon: ICONS.send,
+  },
+  {
+    group: "Configuration",
+    href: "/admin/security",
+    label: "Security",
+    permission: "settings.manage",
+    icon: ICONS.shield,
+  },
+  {
+    group: "Configuration",
+    href: "/admin/backup",
+    label: "Backup & export",
+    permission: "settings.manage",
+    icon: ICONS.receipt,
+  },
+  {
+    group: "Configuration",
+    href: "/admin/health",
+    label: "Site health",
+    permission: "settings.manage",
+    icon: ICONS.report,
   },
   {
     group: "Configuration",
@@ -642,14 +740,20 @@ const ALL_ADMIN_NAV: AdminNavItem[] = [
 ]
 
 // Menu order. Items are declared by module above; a business only sees what it has switched on.
-const NAV_ORDER = [
+export const NAV_ORDER = [
   "/admin",
   "/admin/homepage",
   "/admin/pages",
   "/admin/blog",
+  "/admin/content",
+  "/admin/blocks",
   "/admin/kb",
   "/admin/media",
   "/admin/translations",
+  "/admin/review",
+  "/admin/comments",
+  "/admin/redirects",
+  "/admin/import",
   "/admin/crm",
   "/admin/crm/deals",
   "/admin/assistant",
@@ -669,10 +773,17 @@ const NAV_ORDER = [
   "/admin/analytics",
   "/admin/reports",
   "/admin/modules",
+  "/admin/content-types",
+  "/admin/extensions",
+  "/admin/apps",
+  "/admin/developers",
   "/admin/site",
   "/admin/signin",
+  "/admin/security",
   "/admin/pricing",
   "/admin/settings",
+  "/admin/backup",
+  "/admin/health",
   "/admin/audit",
 ]
 

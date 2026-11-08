@@ -25,6 +25,7 @@ export const GET: RequestHandler = async ({ locals, setHeaders, url }) => {
     : []
   let slugs: string[] = []
   let postSlugs: string[] = []
+  let entryPaths: string[][] = []
   const bookSlugs = isModuleEnabled("booking")
     ? (await listEventTypes(locals.db, { activeOnly: true })).map((t) => t.slug)
     : []
@@ -34,12 +35,33 @@ export const GET: RequestHandler = async ({ locals, setHeaders, url }) => {
         .selectFrom("cms_pages")
         .select("slug")
         .where("status", "=", "published")
+        .where("seo_noindex", "=", 0)
         .limit(5000)
         .execute(),
-      publishedPosts(locals.db).select("slug").limit(5000).execute(),
+      publishedPosts(locals.db)
+        .select("slug")
+        .where("seo_noindex", "=", 0)
+        .limit(5000)
+        .execute(),
     ])
-    slugs = pages.map((p) => p.slug)
+    const [archives, entries] = await Promise.all([
+      locals.db
+        .selectFrom("content_types")
+        .select("url_prefix")
+        .where("has_archive", "=", 1)
+        .execute(),
+      locals.db
+        .selectFrom("content_entries as e")
+        .innerJoin("content_types as t", "t.id", "e.type_id")
+        .select(["t.url_prefix", "e.slug"])
+        .where("e.status", "=", "published")
+        .where("e.seo_noindex", "=", 0)
+        .limit(5000)
+        .execute(),
+    ])
+    slugs = [...pages.map((p) => p.slug), ...archives.map((a) => a.url_prefix)]
     postSlugs = posts.map((p) => p.slug)
+    entryPaths = entries.map((e) => [e.url_prefix, e.slug])
   }
   setHeaders({ "cache-control": "public, max-age=600, s-maxage=3600" })
   return await sitemap.response({
@@ -63,6 +85,7 @@ export const GET: RequestHandler = async ({ locals, setHeaders, url }) => {
     paramValues: {
       "/[slug]": slugs,
       "/blog/[slug]": postSlugs,
+      "/[slug]/[entry]": entryPaths,
       ...(isModuleEnabled("booking") ? { "/book/[slug]": bookSlugs } : {}),
       ...(isModuleEnabled("kb") ? { "/help/[slug]": helpSlugs } : {}),
       ...(isModuleEnabled("forms") ? { "/forms/[slug]": formSlugs } : {}),

@@ -9,6 +9,10 @@ export type PublicSite = {
   brand: Brand
   navigation: Navigation
   announcement: string
+  /** Language of this page, the site's default, and all offered (empty when the site has one). */
+  locale: string
+  defaultLocale: string
+  locales: { code: string; name: string }[]
   themeCss: string
   /** False hides the Sign in links; staff still sign in at /login/sign_in. */
   signIn: boolean

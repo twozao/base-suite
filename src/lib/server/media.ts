@@ -45,7 +45,7 @@ const CONTENT_TYPE_BY_EXT: Record<string, string> = Object.fromEntries(
 )
 
 export const MEDIA_NAME_RE =
-  /^[0-9]{13}-[A-Za-z0-9_-]{8}-[a-z0-9-]{1,60}\.(png|jpg|gif|webp|avif)$/
+  /^[0-9]{13}-[A-Za-z0-9_-]{8}-[a-z0-9-]{1,70}\.(png|jpg|gif|webp|avif)$/
 
 export const safeBaseName = (filename: string) =>
   (filename.split(/[\\/]/).pop() ?? "")
@@ -54,7 +54,8 @@ export const safeBaseName = (filename: string) =>
     .normalize("NFKD")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
-    .slice(0, 60) || "image"
+    .slice(0, 50)
+    .replace(/-+$/g, "") || "image"
 
 /** Validate type by content (not by the browser-supplied name/type). */
 export const detectImageType = (bytes: Uint8Array) =>
@@ -175,4 +176,41 @@ export const listMedia = async () => {
       }),
   )
   return { files, error: null }
+}
+
+/** Resized copies made at upload are stored as <original stem>-w<width>.webp. */
+export const VARIANT_RE = /-w(\d{2,4})\.webp$/
+
+/** Copies an image from an outside address into the media library. Returns the new name or an error. */
+export const importImage = async (
+  db: import("./db").Db,
+  url: string,
+): Promise<{ name: string } | { error: string }> => {
+  const { fetchPublic } = await import("./security/outbound")
+  const { imageSize } = await import("./image_size")
+  const r = await fetchPublic(url, {
+    maxBytes: MAX_UPLOAD_BYTES,
+    timeoutMs: 15_000,
+  })
+  if (!r.ok) return { error: r.error }
+  if (!r.res.ok) return { error: `The address answered ${r.res.status}` }
+  const type = detectImageType(r.bytes.slice(0, 16))
+  if (!type)
+    return { error: "That address is not a PNG, JPEG, WebP, GIF or AVIF image" }
+  const base = new URL(url).pathname.split("/").pop() ?? "image"
+  const name = `${Date.now()}-${randomToken(6).slice(0, 8)}-${safeBaseName(base)}.${TYPES[type].ext}`
+  await saveMedia(name, r.bytes)
+  const size = imageSize(r.bytes)
+  await db
+    .insertInto("media")
+    .values({
+      name,
+      size: r.bytes.byteLength,
+      width: size?.width ?? null,
+      height: size?.height ?? null,
+      source_url: url.slice(0, 1000),
+    })
+    .onConflict((oc) => oc.column("name").doNothing())
+    .execute()
+  return { name }
 }

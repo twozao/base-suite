@@ -2,23 +2,37 @@
 
 A SvelteKit platform for running a small business online: a website the owner edits from an admin portal, plus modules for contact, live chat, booking, newsletter, Stripe subscriptions, CRM and analytics. It runs on a single SQLite file by default, so a laptop or a small VPS is enough. Point `DATABASE_URL` at Postgres when you want a database server, or deploy it to Cloudflare Workers with D1 and R2. Modules can be left out of the build or switched off at runtime, and every admin action checks permissions on the server.
 
+## Live demos
+
+The same code with three sample sites, each on Cloudflare Pages with its own D1 database:
+
+- Agency, a small web studio with a dark theme: https://base-suite-agency-demo.pages.dev
+- Enterprise, an industrial company with a corporate theme: https://base-suite-enterprise-demo.pages.dev
+- Portfolio, one person's site with a minimal theme: https://base-suite-portfolio-demo.pages.dev
+
+Sign-up is closed on the demos and the AI chat answers from the site's own pages, with no AI model behind it.
+
 Started from [CMSaasStarter](https://github.com/CriticalMoments/CMSaasStarter) (MIT) for the account pages, Stripe checkout and billing portal.
 
 ## What is in it
 
-| Module                        | Category  | What it adds                                                                                                                       |
-| ----------------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Pages & Blog `cms`            | Website   | Pages at `/<slug>`, blog with tags, scheduling, RSS, search and sitemap                                                            |
-| Contact form `contact`        | Engage    | Topics, configurable fields, inline validation, spam traps, auto-reply, inbox with statuses and notes                              |
-| Live chat `chat`              | Engage    | Lazy chat widget, support inbox, conversation in the customer portal                                                               |
-| Online booking `booking`      | Engage    | Built-in scheduling: event types, availability, time zones, reschedule and cancel links, invites, reminders. Calendly optional     |
-| Newsletter `newsletter`       | Engage    | Double opt-in, safe unsubscribe, CSV export                                                                                        |
-| Subscriptions `subscriptions` | Sell      | Stripe Checkout, billing portal, plans editor, webhook mirror                                                                      |
-| CRM `crm`                     | Customers | Contacts captured from every channel, activity timeline, notes, deals pipeline                                                     |
-| Analytics `analytics`         | Insights  | Cookie-free page views, top pages and referrers                                                                                    |
-| AI assistant `assistant`      | Engage    | Chat from your own content with Needle 3 search, many AI providers and MCP connections. Reusable package, deployable to Cloudflare |
+| Module                        | Category  | What it adds                                                                                                                                                                             |
+| ----------------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Pages & Blog `cms`            | Website   | Block editor, pages and blog with revisions, scheduling, RSS, search and sitemap; content types with custom fields; reusable blocks; review queue; comments; redirects; WordPress import |
+| Form builder `forms`          | Engage    | Forms with their own page, an inbox of answers, CSV export, admin alerts and a Form block                                                                                                |
+| Multilingual `i18n`           | Website   | `/fr/about` style addresses, translated pages, posts and menu labels, language switcher, hreflang                                                                                        |
+| Contact form `contact`        | Engage    | Topics, configurable fields, inline validation, spam traps, auto-reply, inbox with statuses and notes                                                                                    |
+| Live chat `chat`              | Engage    | Lazy chat widget, support inbox, conversation in the customer portal                                                                                                                     |
+| Online booking `booking`      | Engage    | Built-in scheduling: event types, availability, time zones, reschedule and cancel links, invites, reminders. Calendly optional                                                           |
+| Newsletter `newsletter`       | Engage    | Double opt-in, safe unsubscribe, CSV export                                                                                                                                              |
+| Subscriptions `subscriptions` | Sell      | Stripe Checkout, billing portal, plans editor, webhook mirror                                                                                                                            |
+| CRM `crm`                     | Customers | Contacts captured from every channel, activity timeline, notes, deals pipeline                                                                                                           |
+| Analytics `analytics`         | Insights  | Cookie-free page views, top pages and referrers                                                                                                                                          |
+| AI assistant `assistant`      | Engage    | Chat from your own content with Needle 3 search, many AI providers and MCP connections. Reusable package, deployable to Cloudflare                                                       |
 
-The admin portal (`/admin`) is always on: dashboard, users and roles (admin, editor, support), audit log, settings and the module manager.
+The admin portal (`/admin`) is always on: dashboard, users and roles (admin, editor, author, contributor, support), audit log, settings and the module manager. It also has two-step sign-in with authenticator apps and passkeys, a sessions list, optional Cloudflare Access in front of `/admin`, backup and restore, and a site health page.
+
+Features can be added without code: Extensions are JSON packages of content types, blocks and settings, and Apps are outside services that get signed events and a scoped API token. There is a Content API at `/api/v1`. See [docs/EXTENDING.md](docs/EXTENDING.md#plugins-extensions-apps-and-the-api).
 
 Two switches per module. `InstalledModules` in `src/config.ts` decides what is compiled in. Admin -> Modules then turns installed modules on and off at runtime without a redeploy; dependencies are enforced and every toggle is audit-logged.
 
@@ -30,7 +44,8 @@ Everything visitors see is edited in the admin portal: homepage sections, pages,
 | ------------------------------------------------------------ | ----------------------------------------------------------------------- |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)                 | The design, data layer, module anatomy and request lifecycle            |
 | [docs/MODULES.md](docs/MODULES.md)                           | Setting up each module, roles, the security model, the site owner guide |
-| [docs/EXTENDING.md](docs/EXTENDING.md)                       | Themes, your own sample site, new modules and settings                  |
+| [docs/EXTENDING.md](docs/EXTENDING.md)                       | Themes, sample sites, modules, extensions, apps and the Content API     |
+| [docs/CMS_PLAN.md](docs/CMS_PLAN.md)                         | The WordPress-replacement plan and what is built                        |
 | [docs/DEPLOY_CLOUDFLARE.md](docs/DEPLOY_CLOUDFLARE.md)       | Deploying to Cloudflare Workers, and the theme demos                    |
 | [packages/assistant/README.md](packages/assistant/README.md) | The AI assistant, and reusing it in other projects                      |
 | [AGENTS.md](AGENTS.md)                                       | Rules and commands for AI coding agents working on the code             |
@@ -53,7 +68,7 @@ Locally, the first account you create at `/login/sign_up` becomes the admin. On 
 
 Without an email provider configured, sign-up skips email verification and the forgot-password page explains that a reset link cannot be sent.
 
-Other commands: `start`, `stop`, `restart`, `status`, `logs [n]`, `db:migrate`, `db:seed [profile]`, `db:profiles`, `db:shell` (needs `sqlite3`), `db:reset [profile]` (wipes the local database), `test`, `check`, `build`, `clean`, and the Cloudflare ones: `cf:build`, `demo:local`, `demo:all`, `demo:stop`, `demo:deploy`. `./setup.sh help` lists them.
+Other commands: `start`, `stop`, `restart`, `status`, `logs [n]`, `db:migrate`, `db:seed [profile]`, `db:profiles`, `db:shell` (needs `sqlite3`), `db:reset [profile]` (wipes the local database), `test`, `check`, `build`, `clean`, and the Cloudflare ones: `cf:build`, `demo:local`, `demo:all`, `demo:stop`, `demo:deploy`, `demo:pages`. `./setup.sh help` lists them.
 
 ### Sample sites
 
@@ -78,7 +93,7 @@ The logos, hero images, post covers and page figures under `static/samples/` are
 
 Themes are presets in `src/lib/server/theme.ts` (Fresh, Studio, Corporate, Minimal) that set the background tones, corner radius, fonts and hero layout. Pick one in Admin -> Brand & navigation next to the brand colours. [docs/EXTENDING.md](docs/EXTENDING.md) shows how to add a theme or your own sample site.
 
-Each sample site also runs as a live demo on Cloudflare, one Worker per theme: `./setup.sh demo:all` runs all three in the Workers runtime on your machine, and `./setup.sh demo:deploy agency` puts one on your account. See [docs/DEPLOY_CLOUDFLARE.md](docs/DEPLOY_CLOUDFLARE.md#theme-demos).
+Each sample site also runs as a demo on Cloudflare: `./setup.sh demo:all` runs all three in the Workers runtime on your machine, `./setup.sh demo:pages agency` puts one on Cloudflare Pages, and `./setup.sh demo:deploy agency` puts one on Workers. See [docs/DEPLOY_CLOUDFLARE.md](docs/DEPLOY_CLOUDFLARE.md#theme-demos).
 
 ## Configuration
 

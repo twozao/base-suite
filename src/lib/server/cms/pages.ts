@@ -80,11 +80,15 @@ export const publishedPage = (db: Db, slug: string) =>
   db
     .selectFrom("cms_pages")
     .select([
+      "id",
       "title",
       "body_html",
       "excerpt",
       "seo_title",
       "seo_description",
+      "og_image_url",
+      "seo_noindex",
+      "template",
       "updated_at",
     ])
     .where("slug", "=", slug)

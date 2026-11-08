@@ -75,6 +75,18 @@ const main = async () => {
         .insertInto("user_roles")
         .values({ user_id: made.user.id, role: "admin" })
         .execute()
+      // A complete profile, so the account pages (security, two-step sign-in) open straight away.
+      const brand = (await getSettings(db)).brand
+      const profile = {
+        full_name: "Demo admin",
+        company_name: brand.siteName,
+        website: "https://example.com",
+      }
+      await db
+        .insertInto("profiles")
+        .values({ id: made.user.id, ...profile })
+        .onConflict((oc) => oc.column("id").doUpdateSet(profile))
+        .execute()
       const assistant = createAssistant({
         db: {
           all: async (q, p = []) =>

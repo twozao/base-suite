@@ -12,6 +12,8 @@ declare global {
       session: SessionInfo | null
       /** Memoised by getStaff(); undefined until first looked up. */
       staff?: StaffContext | null
+      /** An app origin the admin may show in a frame on this response (Admin -> Apps). */
+      frameOrigin?: string
     }
     // interface PageData {}
     // interface Error {}

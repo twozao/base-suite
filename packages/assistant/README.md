@@ -80,6 +80,8 @@ Then add the front ends to your pages. Both are plain JavaScript and follow your
 <script src="/assistant/admin.js"></script>
 ```
 
+If your site has its own live chat, add `data-handoff="Talk to a person"` to the widget script. The chat then shows that button, and clicking it closes the chat and fires an `assistant:handoff` event on `window`, with the visitor's last question in `detail.question`, so your page can open its live chat. When the assistant stays hidden for a visitor, it fires `assistant:unavailable`, so your page can show its own chat button instead.
+
 Tables are created on first use, all prefixed `assistant_`. For Needle on Node use `needleNodeEngine` from `./embed/needle-node`. In Base Suite see `src/lib/server/assistant.ts`.
 
 ## Deploy to Cloudflare

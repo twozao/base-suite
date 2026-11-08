@@ -269,7 +269,7 @@ export const agency: SeedProfile = {
         items: [
           {
             q: "How much does a website cost?",
-            a: "A brochure site is a fixed 2,400 plus the care plan if you want it. Bigger builds get a fixed quote after the brief. Prices are on the pricing page.",
+            a: "A brochure site is a fixed $2,400 plus the care plan if you want it. Bigger builds get a fixed quote after the brief. Prices are on the pricing page.",
           },
           {
             q: "Do we own the site?",
@@ -367,7 +367,7 @@ export const agency: SeedProfile = {
         },
         {
           q: "What about bigger projects?",
-          a: "Anything beyond a brochure site gets a fixed quote after the one page brief. Most land between 5,000 and 15,000.",
+          a: "Anything beyond a brochure site gets a fixed quote after the one page brief. Most land between $5,000 and $15,000.",
         },
       ],
     },
@@ -516,7 +516,7 @@ Prices are on the [pricing page](/pricing). [Book a call](/book) and we will tel
 
 ## What it costs
 
-A brochure site is a fixed 2,400. Bigger builds (online shops, member areas, anything with custom software) get a fixed quote after the one page brief, usually between 5,000 and 15,000. See the [pricing page](/pricing).
+A brochure site is a fixed $2,400. Bigger builds (online shops, member areas, anything with custom software) get a fixed quote after the one page brief, usually between $5,000 and $15,000. See the [pricing page](/pricing).
 
 ## How long it takes
 
@@ -562,7 +562,7 @@ It does not give medical, legal or financial advice. It does not promise things 
 
 ## What it costs
 
-Setup is a fixed 1,800, then 120 a month for hosting, the monthly review and changes to the documents. See the [pricing page](/pricing).
+Setup is a fixed $1,800, then $120 a month for hosting, the monthly review and changes to the documents. See the [pricing page](/pricing).
 
 ## Is it the right first step?
 
@@ -601,7 +601,7 @@ Not always. If your FAQ is not written down yet, start there; it is half the job
 
 ## What it costs
 
-Most automations are a fixed 1,200 to 3,500 depending on how many tools are involved, plus the [care plan](/services-care-plan) if you want it watched. We quote after watching the job.
+Most automations are a fixed $1,200 to $3,500 depending on how many tools are involved, plus the [care plan](/services-care-plan) if you want it watched. We quote after watching the job.
 
 ## Example
 
@@ -790,7 +790,7 @@ Anything it cannot price (unusual cargo, multi-drop, missing details) goes to he
 
 ## What it cost
 
-A fixed 2,800 plus the care plan. It paid for itself in the first month, by Ravi's count, in quotes that went out before a competitor's.
+A fixed $2,800 plus the care plan. It paid for itself in the first month, by Ravi's count, in quotes that went out before a competitor's.
 
 [Book a call](/book) and describe the job that depends on one person.`,
     },
@@ -885,7 +885,7 @@ The same shape, with one difference: the build runs side by side with the old wa
         "The questions we get on most first calls, answered plainly. If yours is not here, ask on the chat.",
       md: `## Money
 
-**How much does a website cost?** A brochure site is a fixed 2,400. Bigger builds get a fixed quote after the brief, usually between 5,000 and 15,000. The [pricing page](/pricing) has the packages.
+**How much does a website cost?** A brochure site is a fixed $2,400. Bigger builds get a fixed quote after the brief, usually between $5,000 and $15,000. The [pricing page](/pricing) has the packages.
 
 **Do you take a deposit?** Half up front for fixed-price work, the rest at launch.
 

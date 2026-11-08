@@ -24,6 +24,9 @@ export const RATE_LIMITS = {
   passwordCheck: { windowSeconds: 900, max: 10 },
   pageView: { windowSeconds: 60, max: 60 },
   search: { windowSeconds: 60, max: 30 },
+  /** Per API token, and per address for calls without one. */
+  api: { windowSeconds: 60, max: 300 },
+  comment: { windowSeconds: 600, max: 5 },
 } satisfies Record<string, RateLimitRule>
 
 /**

@@ -1,4 +1,5 @@
 import { fail, redirect } from "@sveltejs/kit"
+import { emit } from "$lib/server/plugins/events"
 import { z } from "zod"
 import { safeNextPath } from "$lib/safe_redirect"
 import { createUser, markEmailVerified } from "$lib/server/auth/users"
@@ -59,7 +60,14 @@ export const actions: Actions = {
     if (mailConfigured())
       await sendVerificationEmail(event, result.user.id, result.user.email)
     else await markEmailVerified(db, result.user.id)
-    await startSession(event, result.user.id)
-    redirect(303, safeNextPath(event.url.searchParams.get("next")))
+    await emit(db, "user.created", { id: result.user.id })
+    redirect(
+      303,
+      await startSession(
+        event,
+        result.user.id,
+        safeNextPath(event.url.searchParams.get("next")),
+      ),
+    )
   },
 }

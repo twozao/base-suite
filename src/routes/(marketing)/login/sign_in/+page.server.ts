@@ -48,7 +48,13 @@ export const actions: Actions = {
       return fail(400, { error: "Email or password is incorrect", email })
     if (!(await maySignIn(db, policy, user.id)))
       return fail(403, { error: "Sign-in is limited to staff.", email })
-    await startSession(event, user.id)
-    redirect(303, safeNextPath(event.url.searchParams.get("next")))
+    redirect(
+      303,
+      await startSession(
+        event,
+        user.id,
+        safeNextPath(event.url.searchParams.get("next")),
+      ),
+    )
   },
 }

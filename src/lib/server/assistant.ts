@@ -169,9 +169,37 @@ const settingsDocuments = async (db: Db) => {
   return docs
 }
 
+/** An entry's own fields as "Label: value" lines, so the assistant can answer from them. */
+const entryFieldText = (typeFields: string, values: string) => {
+  try {
+    const defs = JSON.parse(typeFields) as {
+      key: string
+      label: string
+      type: string
+    }[]
+    const v = JSON.parse(values) as Record<string, unknown>
+    return defs
+      .filter(
+        (d) =>
+          d.type !== "image" &&
+          d.type !== "relation" &&
+          v[d.key] !== null &&
+          v[d.key] !== undefined &&
+          v[d.key] !== "",
+      )
+      .map(
+        (d) =>
+          `${d.label}: ${v[d.key] === true ? "Yes" : v[d.key] === false ? "No" : String(v[d.key])}`,
+      )
+      .join("\n")
+  } catch {
+    return ""
+  }
+}
+
 const siteDocuments = (db: Db) => async () => {
   const now = nowIso()
-  const [pages, posts] = await Promise.all([
+  const [pages, posts, entries] = await Promise.all([
     db
       .selectFrom("cms_pages")
       .select(["slug", "title", "body_md"])
@@ -184,6 +212,22 @@ const siteDocuments = (db: Db) => async () => {
       .where("status", "=", "published")
       .where("published_at", "<=", now)
       .limit(1000)
+      .execute(),
+    db
+      .selectFrom("content_entries as e")
+      .innerJoin("content_types as t", "t.id", "e.type_id")
+      .select([
+        "e.slug",
+        "e.title",
+        "e.body_md",
+        "e.excerpt",
+        "e.fields_json",
+        "t.url_prefix",
+        "t.fields_json as type_fields",
+      ])
+      .where("e.status", "=", "published")
+      .where("t.in_search", "=", 1)
+      .limit(2000)
       .execute(),
   ])
   return [
@@ -200,6 +244,19 @@ const siteDocuments = (db: Db) => async () => {
       title: p.title,
       text: p.body_md,
       origin: `/blog/${p.slug}`,
+      audience: "public" as const,
+    })),
+    ...entries.map((e) => ({
+      id: `entry:${e.url_prefix}:${e.slug}`,
+      title: e.title,
+      text: [
+        e.excerpt ?? "",
+        entryFieldText(e.type_fields, e.fields_json),
+        e.body_md,
+      ]
+        .filter(Boolean)
+        .join("\n\n"),
+      origin: `/${e.url_prefix}/${e.slug}`,
       audience: "public" as const,
     })),
   ].filter((d) => d.text.trim())

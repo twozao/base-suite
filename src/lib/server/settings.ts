@@ -1,3 +1,4 @@
+import { LOCALE_CODES } from "$lib/i18n"
 import { z } from "zod"
 import type { Db } from "./db"
 import { nowIso, parseJson } from "./db/json"
@@ -167,6 +168,43 @@ export const settingsSchema = {
       hours: z.string().trim().max(120).default(""),
     })
     .default(contactDefaults),
+  security: z
+    .object({
+      /** Staff must turn on two-step sign-in before they can use the admin. */
+      requireStaff2fa: z.boolean(),
+    })
+    .default({ requireStaff2fa: false }),
+  comments: z
+    .object({
+      enabled: z.boolean(),
+      /** New comments wait for a moderator unless the writer is signed in staff. */
+      requireApproval: z.boolean(),
+      /** Comments close this many days after a post is published; 0 keeps them open. */
+      closeAfterDays: z.number().int().min(0).max(3650),
+      notifyAdmin: z.boolean(),
+    })
+    .default({
+      enabled: false,
+      requireApproval: true,
+      closeAfterDays: 0,
+      notifyAdmin: true,
+    }),
+  i18n: z
+    .object({
+      defaultLocale: z.string().refine((v) => LOCALE_CODES.includes(v)),
+      /** Every language the site offers, the default included. */
+      locales: z
+        .array(z.string().refine((v) => LOCALE_CODES.includes(v)))
+        .min(1)
+        .max(10),
+    })
+    .default({ defaultLocale: "en", locales: ["en"] }),
+  seo: z
+    .object({
+      /** Organization and breadcrumb structured data on every page (SEO pack extension). */
+      structuredData: z.boolean(),
+    })
+    .default({ structuredData: false }),
 }
 
 export type SettingKey = keyof typeof settingsSchema

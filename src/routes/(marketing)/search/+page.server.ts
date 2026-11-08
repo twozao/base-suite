@@ -1,6 +1,7 @@
 import { searchPages } from "$lib/server/cms/pages"
 import { searchPosts } from "$lib/server/posts"
 import { searchArticles } from "$lib/server/kb"
+import { searchEntries } from "$lib/server/cms/entries"
 import { isModuleEnabled } from "$lib/modules"
 import { clientIp } from "$lib/server/security/request"
 import { rateLimit, RATE_LIMITS } from "$lib/server/security/rate_limit"
@@ -20,10 +21,11 @@ export const load: PageServerLoad = async (event) => {
     ))
   )
     return { q, results: [], limited: true }
-  const [posts, pages, articles] = await Promise.all([
+  const [posts, pages, articles, entries] = await Promise.all([
     searchPosts(locals.db, q),
     searchPages(locals.db, q),
     isModuleEnabled("kb") ? searchArticles(locals.db, q) : [],
+    isModuleEnabled("cms") ? searchEntries(locals.db, q) : [],
   ])
   return {
     q,
@@ -39,6 +41,12 @@ export const load: PageServerLoad = async (event) => {
         title: p.title,
         excerpt: p.excerpt,
         kind: "Blog",
+      })),
+      ...entries.map((e) => ({
+        href: `/${e.url_prefix}/${e.slug}`,
+        title: e.title,
+        excerpt: e.excerpt,
+        kind: e.singular,
       })),
       ...articles.map((a) => ({
         href: `/help/${a.slug}`,

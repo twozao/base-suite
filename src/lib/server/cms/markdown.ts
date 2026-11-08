@@ -7,7 +7,7 @@ import sanitizeHtml from "sanitize-html"
 
 const marked = new Marked({ gfm: true, breaks: false, async: false })
 
-const SANITIZE: sanitizeHtml.IOptions = {
+export const SANITIZE: sanitizeHtml.IOptions = {
   allowedTags: [
     "h1",
     "h2",

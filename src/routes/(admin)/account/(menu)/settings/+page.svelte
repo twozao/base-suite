@@ -74,6 +74,16 @@
   />
 {/if}
 
+<SettingsModule
+  title="Security"
+  editable={false}
+  fields={[
+    { id: "security", initialValue: "Two-step sign-in, passkeys and devices" },
+  ]}
+  editButtonTitle="Manage security"
+  editLink="/account/settings/security"
+/>
+
 {#if methods.length}
   <div class="card p-6 pb-7 mt-8 max-w-xl flex flex-col md:flex-row shadow-sm">
     <div class="w-48 flex-none text-xl font-bold mb-3 md:mb-0">

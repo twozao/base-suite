@@ -1,13 +1,13 @@
 import { json } from "@sveltejs/kit"
 import { requirePermission } from "$lib/server/auth/staff"
-import { listMedia } from "$lib/server/media"
+import { mediaLibrary } from "$lib/server/media_library"
 import type { RequestHandler } from "./$types"
 
 export const GET: RequestHandler = async (event) => {
-  await requirePermission(event, "cms.edit")
-  const { files } = await listMedia()
+  await requirePermission(event, "cms.write")
+  const { files } = await mediaLibrary(event.locals.db)
   return json(
-    { files: files.map((f) => ({ name: f.name, url: f.url })) },
+    { files: files.map((f) => ({ name: f.name, url: f.url, alt: f.alt })) },
     { headers: { "cache-control": "private, no-store" } },
   )
 }
