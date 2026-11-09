@@ -178,6 +178,7 @@ export const addReply = async (
   if (input.kind === "staff") await notifyCustomer(db, t, input.origin)
   else {
     await sendAdminEmail({
+      db,
       subject: `Reply on ticket #${ticketId}`,
       body: `${t.requester_email} replied on "${t.subject}".\n\nOpen in admin: ${input.origin}/admin/helpdesk/${ticketId}`,
     })
@@ -198,6 +199,7 @@ const notifyCustomer = async (
   if (!mailConfigured()) return
   const { brand } = await getSettings(db)
   await sendTemplatedEmail({
+    db,
     subject: `[#${t.id}] ${t.subject}`,
     to_emails: [t.requester_email],
     from_email: fromEmail(),
@@ -222,12 +224,14 @@ export const notifyTicketOpened = async (
   origin: string,
 ) => {
   await sendAdminEmail({
+    db,
     subject: `New ticket #${t.id}`,
     body: `${t.email}: ${t.subject}\n\nOpen in admin: ${origin}/admin/helpdesk/${t.id}`,
   })
   if (!mailConfigured()) return
   const { brand } = await getSettings(db)
   await sendTemplatedEmail({
+    db,
     subject: `[#${t.id}] We received your request`,
     to_emails: [t.email],
     from_email: fromEmail(),

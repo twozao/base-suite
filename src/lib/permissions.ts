@@ -13,6 +13,7 @@ export const PERMISSIONS = [
   "cms.publish_own",
   "comments.moderate",
   "plugins.manage",
+  "email.manage",
   "contact.manage",
   "chat.respond",
   "bookings.view",

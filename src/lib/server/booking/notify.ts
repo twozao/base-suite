@@ -50,6 +50,7 @@ const send = async (
   if (!mailConfigured() || !b.invitee_email) return
   const { brand } = await getSettings(db)
   await sendTemplatedEmail({
+    db,
     subject: n.subject,
     to_emails: [b.invitee_email],
     from_email: fromEmail(),
@@ -99,6 +100,7 @@ export const notifyBooked = async (
     ics: true,
   })
   await sendAdminEmail({
+    db,
     subject: "New booking",
     body: `${b.invitee_name} (${b.invitee_email}) booked "${b.event_name}" for ${when(b)}.\n\nOpen in admin: ${origin}/admin/bookings/${b.id}`,
   })
@@ -117,6 +119,7 @@ export const notifyRescheduled = async (
     ics: true,
   })
   await sendAdminEmail({
+    db,
     subject: "Booking rescheduled",
     body: `${b.invitee_name} (${b.invitee_email}): "${b.event_name}" is now ${when(b)}.\n\nOpen in admin: ${origin}/admin/bookings/${b.id}`,
   })
@@ -139,6 +142,7 @@ export const notifyCanceled = async (
     canceled: true,
   })
   await sendAdminEmail({
+    db,
     subject: "Booking cancelled",
     body: `${b.invitee_name} (${b.invitee_email}) "${b.event_name}" for ${when(b)} was cancelled.${reason ? `\n\nReason: ${reason}` : ""}\n\nOpen in admin: ${origin}/admin/bookings/${b.id}`,
   })

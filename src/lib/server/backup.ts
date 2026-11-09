@@ -22,6 +22,7 @@ export const CONTENT_TABLES = [
   "forms",
   "media",
   "extensions",
+  "email_templates",
 ] as const
 type Table = (typeof CONTENT_TABLES)[number]
 
@@ -37,6 +38,7 @@ const KEYS: Record<Table, string[]> = {
   forms: ["id"],
   media: ["name"],
   extensions: ["id"],
+  email_templates: ["id"],
 }
 // Columns that point at users; restored as empty so a backup works on a site with other accounts.
 const USER_COLUMNS = ["created_by", "updated_by", "installed_by"]

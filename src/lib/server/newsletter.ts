@@ -73,6 +73,7 @@ export const subscribe = async (
   if (doubleOptIn) {
     const s = await getSettings(db)
     await sendTemplatedEmail({
+      db,
       subject: `Confirm your subscription to ${s.brand.siteName}`,
       to_emails: [input.email],
       from_email: env.PRIVATE_FROM_EMAIL || env.PRIVATE_FROM_ADMIN_EMAIL || "",

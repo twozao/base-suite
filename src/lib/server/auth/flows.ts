@@ -31,6 +31,7 @@ export const sendVerificationEmail = async (
   const token = await issueToken(event.locals.db, userId, "verify_email")
   const { brand } = await getSettings(event.locals.db)
   await sendTemplatedEmail({
+    db: event.locals.db,
     subject: `Verify your email for ${brand.siteName}`,
     to_emails: [email],
     from_email: fromEmail(),
@@ -53,6 +54,7 @@ export const sendPasswordResetEmail = async (
   const token = await issueToken(event.locals.db, userId, "reset_password")
   const { brand } = await getSettings(event.locals.db)
   await sendTemplatedEmail({
+    db: event.locals.db,
     subject: `Reset your ${brand.siteName} password`,
     to_emails: [email],
     from_email: fromEmail(),

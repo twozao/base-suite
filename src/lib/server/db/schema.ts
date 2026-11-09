@@ -711,6 +711,34 @@ export interface CommentsTable {
   created_at: Timestamp
 }
 
+export interface EmailTemplatesTable {
+  id: string
+  slug: string
+  name: string
+  description: string | null
+  subject: string
+  html: string | null
+  text: string | null
+  variables_json: Generated<string>
+  extension_id: string | null
+  updated_by: string | null
+  created_at: Timestamp
+  updated_at: Timestamp
+}
+export interface EmailLogTable {
+  id: Generated<number>
+  template: string | null
+  to_email: string
+  subject: string
+  status: "sent" | "failed" | "skipped"
+  source: Generated<"system" | "admin" | "test">
+  provider_id: string | null
+  error: string | null
+  body_text: string | null
+  sent_by: string | null
+  created_at: Timestamp
+}
+
 export interface Database {
   users: UsersTable
   helpdesk_tickets: HelpdeskTicketsTable
@@ -775,6 +803,8 @@ export interface Database {
   extensions: ExtensionsTable
   apps: AppsTable
   comments: CommentsTable
+  email_templates: EmailTemplatesTable
+  email_log: EmailLogTable
 }
 
 export type UserRow = Selectable<UsersTable>

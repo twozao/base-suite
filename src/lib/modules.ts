@@ -602,6 +602,13 @@ export const ALL_ADMIN_NAV: AdminNavItem[] = [
   },
   {
     group: "Configuration",
+    href: "/admin/email",
+    label: "Email",
+    permission: "email.manage",
+    icon: ICONS.mail,
+  },
+  {
+    group: "Configuration",
     href: "/admin/extensions",
     label: "Extensions",
     permission: "plugins.manage",
@@ -774,6 +781,7 @@ export const NAV_ORDER = [
   "/admin/reports",
   "/admin/modules",
   "/admin/content-types",
+  "/admin/email",
   "/admin/extensions",
   "/admin/apps",
   "/admin/developers",

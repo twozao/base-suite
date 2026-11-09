@@ -73,11 +73,11 @@ Keys and other secrets never go in settings, because settings reach the browser.
 
 WordPress plugins run inside the site with full access to it, which is where most WordPress break-ins start. Base Suite has three levels instead, from most to least trusted:
 
-| Level     | What it is                                                          | Runs code in the site | Added by                   |
-| --------- | ------------------------------------------------------------------- | --------------------- | -------------------------- |
-| Module    | Code compiled into the build (`src/lib/modules.ts`)                 | Yes, reviewed code    | A developer, then a deploy |
-| Extension | A JSON package: content types, blocks, entries, redirects, switches | No                    | The owner, in the admin    |
-| App       | A service on its own address that gets signed requests              | No                    | The owner, in the admin    |
+| Level     | What it is                                                                           | Runs code in the site | Added by                   |
+| --------- | ------------------------------------------------------------------------------------ | --------------------- | -------------------------- |
+| Module    | Code compiled into the build (`src/lib/modules.ts`)                                  | Yes, reviewed code    | A developer, then a deploy |
+| Extension | A JSON package: content types, blocks, entries, email templates, redirects, switches | No                    | The owner, in the admin    |
+| App       | A service on its own address that gets signed requests                               | No                    | The owner, in the admin    |
 
 ### Extensions
 
@@ -134,6 +134,18 @@ Admin -> Extensions installs one from the catalogue (`src/lib/server/plugins/cat
 ```
 
 Field types: `text`, `textarea`, `markdown`, `number`, `date`, `image`, `link`, `select` (with `options`), `boolean` and `relation` (with `relation` set to another type's slug). Blocks use the same JSON as the block editor (`src/lib/blocks.ts`).
+
+### Example: installing the Emailer package
+
+[examples/extensions/emailer.json](../examples/extensions/emailer.json) is a complete extension you can upload to see how an outside package goes in. It adds four email templates (order confirmation, appointment reminder, event invitation, announcement).
+
+1. Admin -> Extensions -> Install from a file, pick `emailer.json`, then Install package.
+2. Admin -> Email -> Templates lists the four, marked "extension: emailer". Open one to edit it, preview it and send yourself a test.
+3. Admin -> Email -> Send an email sends one to up to 10 addresses, each on its own.
+4. Admin -> Email -> Sent mail shows every send with its status, error and body.
+5. Removing the extension deletes its templates, or keeps them as your own.
+
+Each item in `emailTemplates` has `slug`, `name`, `description`, `subject`, `html`, `text` and `variables`. Use `{{name}}` for a value and `{{#if name}}...{{/if}}` for an optional part; values are always escaped in the HTML. A package cannot change `verify_email` or `reset_password`.
 
 ### Apps
 

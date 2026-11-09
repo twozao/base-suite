@@ -72,10 +72,12 @@ describe("mailer", () => {
     expect(mockSend).not.toHaveBeenCalled()
   })
 
-  it("sendTemplatedEmail does nothing without a provider key", async () => {
+  it("sendTemplatedEmail does nothing without a provider key, but logs it", async () => {
+    const db = await createTestDb()
     const { env } = await import("$env/dynamic/private")
     env.PRIVATE_RESEND_API_KEY = ""
     await mailer.sendTemplatedEmail({
+      db,
       subject: "x",
       to_emails: ["a@example.com"],
       from_email: "b@example.com",
@@ -83,5 +85,8 @@ describe("mailer", () => {
       template_properties: {},
     })
     expect(mockSend).not.toHaveBeenCalled()
+    const log = await db.selectFrom("email_log").selectAll().execute()
+    expect(log).toHaveLength(1)
+    expect(log[0].status).toBe("skipped")
   })
 })

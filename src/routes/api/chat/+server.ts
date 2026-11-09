@@ -101,6 +101,7 @@ export const POST: RequestHandler = async (event) => {
     })
     if (settings.chat.notifyAdminOnNew) {
       await sendAdminEmail({
+        db: event.locals.db,
         subject: "New live chat",
         body: `New chat from ${input.name || "a visitor"} (${event.locals.user?.email ?? input.email ?? "no email"}):\n\n${input.message}\n\nReply in the admin portal: ${event.url.origin}/admin/support/${conversation.id}`,
       })

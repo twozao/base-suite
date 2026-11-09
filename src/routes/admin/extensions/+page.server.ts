@@ -40,6 +40,7 @@ export const load: PageServerLoad = async (event) => {
         adds: [
           ...m.contentTypes.map((t) => `${t.name} at /${t.url_prefix}`),
           ...m.blocks.map((b) => `Block: ${b.name}`),
+          ...m.emailTemplates.map((t) => `Email: ${t.name}`),
           ...(m.settings.seo ? ["Structured data"] : []),
         ],
       }

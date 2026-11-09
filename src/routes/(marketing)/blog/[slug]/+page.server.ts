@@ -178,6 +178,7 @@ export const actions: Actions = {
       })
       if (settings.notifyAdmin)
         await sendAdminEmail({
+          db: event.locals.db,
           subject: `New comment on ${post.title}`,
           body: `${d.name} wrote:\n\n${d.body}\n\n${event.url.origin}/admin/comments`,
         })

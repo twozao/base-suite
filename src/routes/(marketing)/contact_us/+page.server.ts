@@ -179,6 +179,7 @@ export const actions: Actions = {
     })
     if (contact.notifyAdmin) {
       await sendAdminEmail({
+        db: locals.db,
         subject: `New contact request${d.topic ? `: ${d.topic}` : ""}`,
         body: `From: ${d.name} <${d.email}>\nPhone: ${d.phone}\nCompany: ${d.company}\nTopic: ${d.topic}\nPrefers: ${d.preferred_contact}\n\n${d.message}\n\nOpen in admin: ${url.origin}/admin/contact/${reference}`,
       })
@@ -186,6 +187,7 @@ export const actions: Actions = {
     // The address is unverified, so the reply never repeats what was typed into the form.
     if (contact.autoReply && mailConfigured()) {
       await sendTemplatedEmail({
+        db: locals.db,
         subject: `We received your message - ${brand.siteName}`,
         to_emails: [d.email],
         from_email: fromEmail(),
