@@ -124,7 +124,7 @@ export const BLOCK_TYPES: { type: BlockType; label: string; hint: string }[] = [
   {
     type: "markdown",
     label: "Text",
-    hint: "Paragraphs, lists and links in Markdown",
+    hint: "Paragraphs, lists, links and images",
   },
   { type: "heading", label: "Heading", hint: "A section title" },
   {

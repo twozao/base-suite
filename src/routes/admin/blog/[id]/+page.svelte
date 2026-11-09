@@ -1,10 +1,7 @@
 <script lang="ts">
   import { enhance } from "$app/forms"
-  import PageHeader from "$lib/components/admin/PageHeader.svelte"
   import PageEditor from "$lib/components/admin/PageEditor.svelte"
   import PostFields from "$lib/components/admin/PostFields.svelte"
-  import Flash from "$lib/components/admin/Flash.svelte"
-  import { formatDateTime } from "$lib/format"
   import { parseBlocks } from "$lib/blocks"
   let { data, form } = $props()
   const p = $derived(data.post)
@@ -31,31 +28,13 @@
   )
 </script>
 
-<PageHeader
-  title={p.title}
-  subtitle="Last updated {formatDateTime(p.updated_at)}"
-  back="/admin/blog"
->
-  {#snippet actions()}
-    {#if p.status === "published"}<a
-        class="btn btn-sm"
-        href="/blog/{p.slug}"
-        target="_blank">View live</a
-      >{/if}
-  {/snippet}
-</PageHeader>
-
-{#if data.saved && !form}<div role="status" class="alert alert-success mb-4">
-    <span>Post created.</span>
-  </div>{/if}
-<Flash
-  form={form && ("message" in form || "error" in form)
-    ? (form as { message?: string; error?: string })
-    : null}
-/>
-
 {#key `${p.updated_at}-${!!(form && "values" in form)}`}
   <PageEditor
+    notice={form && ("message" in form || "error" in form)
+      ? (form as { message?: string; error?: string })
+      : data.saved && !form
+        ? { message: "Post created." }
+        : null}
     action="?/save"
     prefix="/blog/"
     kind="post"
@@ -67,33 +46,37 @@
     canPublish={data.access.canPublish}
     status={p.status}
     reviewRequested={p.review_requested_at}
+    back="/admin/blog"
+    liveHref="/blog/{p.slug}"
+    updatedAt={p.updated_at}
   >
     {#snippet extra()}<PostFields {values} {errors} />{/snippet}
+    {#snippet panels()}
+      {#if data.access.canDelete}
+        <section class="card card-sm bg-base-100 border border-error/30">
+          <div class="card-body gap-3">
+            <h2 class="card-title text-base">Delete post</h2>
+            <form
+              method="POST"
+              action="?/delete"
+              use:enhance
+              class="flex flex-wrap gap-2 items-end"
+            >
+              <label class="grow">
+                <span class="mb-1 block text-sm"
+                  >Type <code>{p.slug}</code> to delete permanently</span
+                >
+                <input
+                  name="confirm"
+                  class="input input-sm w-full"
+                  autocomplete="off"
+                />
+              </label>
+              <button class="btn btn-sm btn-error">Delete</button>
+            </form>
+          </div>
+        </section>
+      {/if}
+    {/snippet}
   </PageEditor>
 {/key}
-
-{#if data.access.canDelete}
-  <section class="card bg-base-100 border border-error/30 mt-8 max-w-xl">
-    <div class="card-body gap-3">
-      <h2 class="card-title text-base">Delete post</h2>
-      <form
-        method="POST"
-        action="?/delete"
-        use:enhance
-        class="flex flex-wrap gap-2 items-end"
-      >
-        <label class="grow">
-          <span class="label text-sm whitespace-normal mb-1"
-            >Type <code>{p.slug}</code> to delete permanently</span
-          >
-          <input
-            name="confirm"
-            class="input input-sm w-full"
-            autocomplete="off"
-          />
-        </label>
-        <button class="btn btn-sm btn-error">Delete</button>
-      </form>
-    </div>
-  </section>
-{/if}
