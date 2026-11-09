@@ -293,6 +293,7 @@ export const actions: Actions = {
 
     if (!prior || prior.updated_at === null) {
       await sendAdminEmail({
+        db: locals.db,
         subject: "Profile Created",
         body: `Profile created by ${user.email}\nFull name: ${fullName}\nCompany name: ${companyName}\nWebsite: ${website}`,
       })

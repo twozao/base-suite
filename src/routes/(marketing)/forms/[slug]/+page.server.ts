@@ -66,6 +66,7 @@ export const actions: Actions = {
     await emit(db, "form.submitted", { form: f.slug, id, answers: r.answers })
     if (f.notify_admin)
       await sendAdminEmail({
+        db: event.locals.db,
         subject: `New answer: ${f.title}`,
         body:
           r.answers.map((a) => `${a.label}: ${a.value}`).join("\n") +

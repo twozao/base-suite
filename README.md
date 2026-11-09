@@ -32,7 +32,7 @@ Started from [CMSaasStarter](https://github.com/CriticalMoments/CMSaasStarter) (
 
 The admin portal (`/admin`) is always on: dashboard, users and roles (admin, editor, author, contributor, support), audit log, settings and the module manager. It also has two-step sign-in with authenticator apps and passkeys, a sessions list, optional Cloudflare Access in front of `/admin`, backup and restore, and a site health page.
 
-Features can be added without code: Extensions are JSON packages of content types, blocks and settings, and Apps are outside services that get signed events and a scoped API token. There is a Content API at `/api/v1`. See [docs/EXTENDING.md](docs/EXTENDING.md#plugins-extensions-apps-and-the-api).
+Features can be added without code: Extensions are JSON packages of content types, blocks, email templates and settings (try uploading [examples/extensions/emailer.json](examples/extensions/emailer.json)), and Apps are outside services that get signed events and a scoped API token. There is a Content API at `/api/v1`. See [docs/EXTENDING.md](docs/EXTENDING.md#plugins-extensions-apps-and-the-api).
 
 Two switches per module. `InstalledModules` in `src/config.ts` decides what is compiled in. Admin -> Modules then turns installed modules on and off at runtime without a redeploy; dependencies are enforced and every toggle is audit-logged.
 

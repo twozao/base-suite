@@ -1,0 +1,78 @@
+{
+  "id": "emailer",
+  "name": "Emailer starter templates",
+  "version": "1.0.0",
+  "description": "Ready-made emails for orders, appointments, events and announcements. Edit them in Admin, Email, Templates and send them from Send an email.",
+  "author": "Base Suite",
+  "emailTemplates": [
+    {
+      "slug": "order_confirmation",
+      "name": "Order confirmation",
+      "description": "Thanks the customer and lists what they ordered.",
+      "subject": "Your order {{orderNumber}} is confirmed",
+      "html": "<html><body style=\"font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:#f8fafc;padding:24px\"><table role=\"presentation\" width=\"100%\" style=\"max-width:520px;margin:auto;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:32px\"><tr><td><h1 style=\"font-size:20px;margin:0 0 12px\">Thanks, {{name}}</h1><p style=\"color:#334155;line-height:1.6\">We have your order <strong>{{orderNumber}}</strong> and are getting it ready.</p>{{#if items}}<p style=\"white-space:pre-line;background:#f1f5f9;border-radius:8px;padding:12px 16px;color:#0f172a\">{{items}}</p>{{/if}}<p style=\"color:#334155\">Total: <strong>{{total}}</strong></p>{{#if actionUrl}}<p style=\"margin:24px 0\"><a href=\"{{actionUrl}}\" style=\"background:{{color}};color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;display:inline-block\">{{actionLabel}}</a></p>{{/if}}<p style=\"color:#64748b;font-size:13px;margin-top:24px\">{{siteName}}</p></td></tr></table></body></html>",
+      "text": "Thanks, {{name}}\n\nWe have your order {{orderNumber}} and are getting it ready.\n\n{{items}}\n\nTotal: {{total}}\n{{#if actionUrl}}\n{{actionLabel}}: {{actionUrl}}{{/if}}\n\n{{siteName}}",
+      "variables": [
+        "siteName",
+        "color",
+        "name",
+        "orderNumber",
+        "items",
+        "total",
+        "actionLabel",
+        "actionUrl"
+      ]
+    },
+    {
+      "slug": "appointment_reminder",
+      "name": "Appointment reminder",
+      "description": "Reminds someone of an appointment with the time and place.",
+      "subject": "Reminder: {{what}} on {{when}}",
+      "html": "<html><body style=\"font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:#f8fafc;padding:24px\"><table role=\"presentation\" width=\"100%\" style=\"max-width:520px;margin:auto;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:32px\"><tr><td><h1 style=\"font-size:20px;margin:0 0 12px\">See you soon, {{name}}</h1><p style=\"color:#334155;line-height:1.6\">This is a reminder of <strong>{{what}}</strong> on <strong>{{when}}</strong>.</p>{{#if where}}<p style=\"white-space:pre-line;background:#f1f5f9;border-radius:8px;padding:12px 16px;color:#0f172a\">{{where}}</p>{{/if}}{{#if actionUrl}}<p style=\"margin:24px 0\"><a href=\"{{actionUrl}}\" style=\"background:{{color}};color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;display:inline-block\">{{actionLabel}}</a></p>{{/if}}<p style=\"color:#64748b;font-size:13px;margin-top:24px\">{{siteName}}</p></td></tr></table></body></html>",
+      "text": "See you soon, {{name}}\n\nThis is a reminder of {{what}} on {{when}}.\n{{#if where}}\nWhere: {{where}}\n{{/if}}{{#if actionUrl}}\n{{actionLabel}}: {{actionUrl}}{{/if}}\n\n{{siteName}}",
+      "variables": [
+        "siteName",
+        "color",
+        "name",
+        "what",
+        "when",
+        "where",
+        "actionLabel",
+        "actionUrl"
+      ]
+    },
+    {
+      "slug": "event_invitation",
+      "name": "Event invitation",
+      "description": "Invites someone to an event with a button to sign up.",
+      "subject": "You are invited: {{eventName}}",
+      "html": "<html><body style=\"font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:#f8fafc;padding:24px\"><table role=\"presentation\" width=\"100%\" style=\"max-width:520px;margin:auto;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:32px\"><tr><td><h1 style=\"font-size:20px;margin:0 0 12px\">You are invited to {{eventName}}</h1><p style=\"color:#334155;line-height:1.6\">{{intro}}</p>{{#if details}}<p style=\"white-space:pre-line;background:#f1f5f9;border-radius:8px;padding:12px 16px;color:#0f172a\">{{details}}</p>{{/if}}{{#if actionUrl}}<p style=\"margin:24px 0\"><a href=\"{{actionUrl}}\" style=\"background:{{color}};color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;display:inline-block\">{{actionLabel}}</a></p>{{/if}}<p style=\"color:#64748b;font-size:13px;margin-top:24px\">{{siteName}}</p></td></tr></table></body></html>",
+      "text": "You are invited to {{eventName}}\n\n{{intro}}\n\n{{details}}\n{{#if actionUrl}}\n{{actionLabel}}: {{actionUrl}}{{/if}}\n\n{{siteName}}",
+      "variables": [
+        "siteName",
+        "color",
+        "eventName",
+        "intro",
+        "details",
+        "actionLabel",
+        "actionUrl"
+      ]
+    },
+    {
+      "slug": "announcement",
+      "name": "Announcement",
+      "description": "A short news update with an optional link.",
+      "subject": "{{heading}}",
+      "html": "<html><body style=\"font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:#f8fafc;padding:24px\"><table role=\"presentation\" width=\"100%\" style=\"max-width:520px;margin:auto;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:32px\"><tr><td><h1 style=\"font-size:20px;margin:0 0 12px\">{{heading}}</h1><p style=\"color:#334155;line-height:1.6;white-space:pre-line\">{{message}}</p>{{#if actionUrl}}<p style=\"margin:24px 0\"><a href=\"{{actionUrl}}\" style=\"background:{{color}};color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;display:inline-block\">{{actionLabel}}</a></p>{{/if}}<p style=\"color:#64748b;font-size:13px;margin-top:24px\">{{siteName}}</p></td></tr></table></body></html>",
+      "text": "{{heading}}\n\n{{message}}\n{{#if actionUrl}}\n{{actionLabel}}: {{actionUrl}}{{/if}}\n\n{{siteName}}",
+      "variables": [
+        "siteName",
+        "color",
+        "heading",
+        "message",
+        "actionLabel",
+        "actionUrl"
+      ]
+    }
+  ]
+}

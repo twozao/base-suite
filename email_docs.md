@@ -18,6 +18,18 @@ To enable email capabilities, set the following environment variables:
 - `PRIVATE_ADMIN_EMAIL`: the email address to which admin emails will be sent. If unset, admin emails will not be sent.
   - `PRIVATE_FROM_ADMIN_EMAIL`: the email address to use as the from address for admin emails (defaults to `PRIVATE_ADMIN_EMAIL` if not set).
 
+## Templates, sending and the log
+
+Admin -> Email (admins only) has three tabs:
+
+- Sent mail: every email the site sends, kept for 90 days, with its status (sent, failed, skipped), the error and the plain text body. Sign-in and password reset bodies are never kept, because they carry a login link.
+- Templates: the built-in emails can be customized here without a code change, and reset to the file version. You can also add your own, or install them with an extension (see docs/EXTENDING.md, "Example: installing the Emailer package").
+- Send an email: send any template except the sign-in and reset emails to up to 10 addresses.
+
+A template saved in the admin wins over the file in src/lib/emails with the same name. In a customized built-in, `{{subject}}` is the subject the site would normally use.
+
+Without `PRIVATE_RESEND_API_KEY`, nothing is sent and each attempt is logged as skipped.
+
 ## Customize Welcome Email
 
 Base Suite includes a welcome email template that you can customize to fit your brand and content. The email is sent to the user's email address when create their profile.

@@ -5,11 +5,16 @@ import { nowIso } from "../db/json"
 import { bodyFrom } from "../cms/content"
 import { RESERVED_SLUGS, SLUG_RE } from "../cms/pages"
 import { cleanFieldValues, fieldListSchema } from "../cms/types"
+import {
+  emailTemplateSchema,
+  isSensitiveTemplate,
+  saveTemplate,
+} from "../email"
 import { fromPathSchema, invalidateRedirects, toUrlSchema } from "../redirects"
 import { getSettings, saveSetting } from "../settings"
 
 // Extensions add features without code: a JSON package of content types, reusable blocks, sample
-// entries, redirects and setting switches. Everything is validated, and everything it adds carries its
+// entries, email templates, redirects and setting switches. Everything is validated, and everything it adds carries its
 // id, so uninstalling removes exactly that.
 
 export const manifestSchema = z.object({
@@ -69,6 +74,13 @@ export const manifestSchema = z.object({
       }),
     )
     .max(20)
+    .default([]),
+  emailTemplates: z
+    .array(emailTemplateSchema)
+    .max(30)
+    .refine((list) => !list.some((t) => isSensitiveTemplate(t.slug)), {
+      message: "Sign-in and password emails can only be changed in the admin",
+    })
     .default([]),
   redirects: z
     .array(
@@ -131,6 +143,16 @@ const conflicts = async (db: Db, m: Manifest) => {
         .executeTakeFirst()
     )
       out.push(`A page already uses /${t.url_prefix}`)
+  }
+  for (const t of m.emailTemplates) {
+    if (
+      await db
+        .selectFrom("email_templates")
+        .select("id")
+        .where("slug", "=", t.slug)
+        .executeTakeFirst()
+    )
+      out.push(`An email template ${t.slug} already exists`)
   }
   for (const r of m.redirects) {
     if (
@@ -213,6 +235,7 @@ export const installExtension = async (
         extension_id: m.id,
       })
       .execute()
+  for (const t of m.emailTemplates) await saveTemplate(db, t, userId, m.id)
   for (const r of m.redirects)
     await db
       .insertInto("redirects")
@@ -266,12 +289,21 @@ export const uninstallExtension = async (
       .set({ extension_id: null })
       .where("extension_id", "=", id)
       .execute()
+    await db
+      .updateTable("email_templates")
+      .set({ extension_id: null })
+      .where("extension_id", "=", id)
+      .execute()
   } else {
     await db
       .deleteFrom("content_types")
       .where("extension_id", "=", id)
       .execute()
     await db.deleteFrom("cms_blocks").where("extension_id", "=", id).execute()
+    await db
+      .deleteFrom("email_templates")
+      .where("extension_id", "=", id)
+      .execute()
   }
   await db.deleteFrom("redirects").where("extension_id", "=", id).execute()
   if (m.settings.seo?.structuredData) {

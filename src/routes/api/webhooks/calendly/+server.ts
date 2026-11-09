@@ -68,6 +68,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
   if (parsed.data.event === "invitee.created") {
     await sendAdminEmail({
+      db,
       subject: "New booking",
       body: `${row.invitee_name ?? "Someone"} (${row.invitee_email ?? "no email"}) booked "${row.event_name ?? "a meeting"}" for ${row.start_time ?? "an unknown time"}.`,
     })

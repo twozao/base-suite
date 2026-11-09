@@ -341,6 +341,7 @@ export const saveContent = async (event: RequestEvent, target: SaveTarget) => {
   if (intent === "review")
     background(
       sendAdminEmail({
+        db: event.locals.db,
         subject: `Ready for review: ${row.title}`,
         body: `A ${noun} was sent for review${review_note ? ` with this note: ${review_note}` : ""}.\n\n${event.url.origin}/admin/review`,
       }),
