@@ -1,5 +1,4 @@
 <script lang="ts">
-  import PageHeader from "$lib/components/admin/PageHeader.svelte"
   import PageEditor from "$lib/components/admin/PageEditor.svelte"
   import PostFields from "$lib/components/admin/PostFields.svelte"
   import { parseBlocks } from "$lib/blocks"
@@ -23,9 +22,9 @@
   )
 </script>
 
-<PageHeader title="New post" back="/admin/blog" />
 {#key form}
   <PageEditor
+    back="/admin/blog"
     action=""
     prefix="/blog/"
     kind="post"

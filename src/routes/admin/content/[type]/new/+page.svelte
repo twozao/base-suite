@@ -1,5 +1,4 @@
 <script lang="ts">
-  import PageHeader from "$lib/components/admin/PageHeader.svelte"
   import PageEditor from "$lib/components/admin/PageEditor.svelte"
   import EntryFields from "$lib/components/admin/EntryFields.svelte"
   import { parseBlocks } from "$lib/blocks"
@@ -19,12 +18,9 @@
   )
 </script>
 
-<PageHeader
-  title="New {data.type.singular.toLowerCase()}"
-  back="/admin/content/{data.type.slug}"
-/>
 {#key form}
   <PageEditor
+    back="/admin/content/{data.type.slug}"
     action=""
     kind="entry"
     prefix="/{data.type.url_prefix}/"
